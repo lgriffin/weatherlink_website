@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Weather Station</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌤️ My Weather Station</h1>
+            <p class="station-info" id="station-info">Loading station info...</p>
+        </header>
+
+        <main>
+            <!-- Current Conditions Section -->
+            <section class="weather-card current-conditions">
+                <h2>Current Conditions</h2>
+                <div id="current-loading" class="loading">Loading current conditions...</div>
+                <div id="current-error" class="error" style="display: none;"></div>
+                <div id="current-data" class="weather-data" style="display: none;">
+                    <div class="main-reading">
+                        <div class="temperature">
+                            <span class="temp-value" id="current-temp">--</span>
+                            <span class="temp-unit">°F</span>
+                        </div>
+                        <div class="conditions" id="current-conditions">--</div>
+                    </div>
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">Feels Like</span>
+                            <span class="detail-value" id="feels-like">--°F</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Humidity</span>
+                            <span class="detail-value" id="humidity">--%</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Wind</span>
+                            <span class="detail-value" id="wind">-- mph</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Pressure</span>
+                            <span class="detail-value" id="pressure">-- inHg</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Rain Today</span>
+                            <span class="detail-value" id="rain-today">-- in</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Dew Point</span>
+                            <span class="detail-value" id="dew-point">--°F</span>
+                        </div>
+                    </div>
+                    <div class="last-update">
+                        Last updated: <span id="last-update">--</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Historical Records Section -->
+            <section class="weather-card historical-records">
+                <h2>All-Time Records</h2>
+                <div id="records-loading" class="loading">Loading historical records...</div>
+                <div id="records-error" class="error" style="display: none;"></div>
+                <div id="records-data" class="weather-data" style="display: none;">
+                    <div class="records-grid">
+                        <div class="record-item high">
+                            <div class="record-label">High Temperature</div>
+                            <div class="record-value" id="record-high-temp">--°F</div>
+                            <div class="record-date" id="record-high-date">--</div>
+                        </div>
+                        <div class="record-item low">
+                            <div class="record-label">Low Temperature</div>
+                            <div class="record-value" id="record-low-temp">--°F</div>
+                            <div class="record-date" id="record-low-date">--</div>
+                        </div>
+                    </div>
+                    <p class="records-note">Records based on available historical data</p>
+                </div>
+            </section>
+
+            <!-- 12-Month Comparison Section -->
+            <section class="weather-card year-comparison">
+                <h2>One Year Ago Today</h2>
+                <div id="year-ago-loading" class="loading">Loading data from one year ago...</div>
+                <div id="year-ago-error" class="error" style="display: none;"></div>
+                <div id="year-ago-data" class="weather-data" style="display: none;">
+                    <div class="comparison-grid">
+                        <div class="comparison-item">
+                            <span class="comparison-label">Temperature</span>
+                            <div class="comparison-values">
+                                <span class="past-value" id="year-ago-temp">--°F</span>
+                                <span class="comparison-arrow" id="temp-comparison">→</span>
+                                <span class="current-value" id="current-temp-compare">--°F</span>
+                            </div>
+                        </div>
+                        <div class="comparison-item">
+                            <span class="comparison-label">Humidity</span>
+                            <div class="comparison-values">
+                                <span class="past-value" id="year-ago-humidity">--%</span>
+                                <span class="comparison-arrow" id="humidity-comparison">→</span>
+                                <span class="current-value" id="current-humidity-compare">--%</span>
+                            </div>
+                        </div>
+                        <div class="comparison-item">
+                            <span class="comparison-label">Rainfall</span>
+                            <div class="comparison-values">
+                                <span class="past-value" id="year-ago-rain">-- in</span>
+                                <span class="comparison-arrow" id="rain-comparison">→</span>
+                                <span class="current-value" id="current-rain-compare">-- in</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Weather data from Davis Weather Station via WeatherLink API</p>
+            <p class="refresh-notice">Data refreshes automatically every 5 minutes</p>
+        </footer>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

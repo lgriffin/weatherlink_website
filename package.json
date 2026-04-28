@@ -1,0 +1,16 @@
+{
+  "name": "weather-station-website",
+  "version": "1.0.0",
+  "description": "Personal weather website for Davis Weather Station",
+  "private": true,
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build step needed for static site'"
+  }
+}
