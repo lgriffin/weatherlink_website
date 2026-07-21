@@ -1,16 +1,28 @@
 {
-  "name": "weather-station-website",
-  "version": "1.0.0",
-  "description": "Personal weather website for Davis Weather Station",
+  "name": "@weather/root",
   "private": true,
-  "dependencies": {
-    "node-fetch": "^2.6.7"
-  },
-  "devDependencies": {
-    "netlify-cli": "^17.0.0"
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
   },
   "scripts": {
-    "dev": "netlify dev",
-    "build": "echo 'No build step needed for static site'"
+    "dev": "pnpm --parallel --filter @weather/api --filter @weather/web dev",
+    "dev:api": "pnpm --filter @weather/api dev",
+    "dev:web": "pnpm --filter @weather/web dev",
+    "dev:worker": "pnpm --filter @weather/worker dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "pnpm -r lint",
+    "db:generate": "pnpm --filter @weather/persistence-adapter db:generate",
+    "db:migrate": "pnpm --filter @weather/persistence-adapter db:migrate",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0",
+    "@types/node": "^22.0.0"
   }
 }
