@@ -1,0 +1,25 @@
+{
+  "name": "@weather/worker",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "tsx": "^4.19.0",
+    "@weather/domain": "workspace:*",
+    "@weather/contracts": "workspace:*",
+    "@weather/application": "workspace:*",
+    "@weather/observability": "workspace:*",
+    "@weather/weatherlink-adapter": "workspace:*",
+    "@weather/persistence-adapter": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
+  }
+}
