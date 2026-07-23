@@ -1,4 +1,4 @@
-export { createDatabase, type Database } from './db.js';
+export { createDatabase, type DrizzleDatabase as Database, type SqliteClient } from './db.js';
 export { DrizzleStationRepository } from './repositories/station-repository.js';
 export { DrizzleSensorRepository } from './repositories/sensor-repository.js';
 export { DrizzleObservationRepository } from './repositories/observation-repository.js';

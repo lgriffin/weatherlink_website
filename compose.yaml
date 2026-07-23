@@ -1,21 +1,4 @@
 services:
-  db:
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_USER: weather
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-weather}
-      POSTGRES_DB: weather
-    ports:
-      - '5432:5432'
-    volumes:
-      - weather-db:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U weather -d weather']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
   api:
     build:
       context: .
@@ -30,12 +13,11 @@ services:
       WEATHERLINK_API_KEY: ${WEATHERLINK_API_KEY}
       WEATHERLINK_API_SECRET: ${WEATHERLINK_API_SECRET}
       WEATHERLINK_BASE_URL: https://api.weatherlink.com/v2
-      DATABASE_URL: postgresql://weather:${POSTGRES_PASSWORD:-weather}@db:5432/weather
+      DATABASE_PATH: /data/weather.db
       CURRENT_POLL_INTERVAL_MS: '60000'
       METRICS_ENABLED: 'true'
-    depends_on:
-      db:
-        condition: service_healthy
+    volumes:
+      - weather-data:/data
     restart: unless-stopped
     read_only: true
     tmpfs:
@@ -55,11 +37,10 @@ services:
       WEATHERLINK_API_KEY: ${WEATHERLINK_API_KEY}
       WEATHERLINK_API_SECRET: ${WEATHERLINK_API_SECRET}
       WEATHERLINK_BASE_URL: https://api.weatherlink.com/v2
-      DATABASE_URL: postgresql://weather:${POSTGRES_PASSWORD:-weather}@db:5432/weather
+      DATABASE_PATH: /data/weather.db
       CURRENT_POLL_INTERVAL_MS: '60000'
-    depends_on:
-      db:
-        condition: service_healthy
+    volumes:
+      - weather-data:/data
     restart: unless-stopped
     read_only: true
     tmpfs:
@@ -68,4 +49,4 @@ services:
       - no-new-privileges:true
 
 volumes:
-  weather-db:
+  weather-data:

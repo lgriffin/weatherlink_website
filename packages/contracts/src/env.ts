@@ -5,7 +5,7 @@ export const EnvSchema = z.object({
   WEATHERLINK_API_SECRET: z.string().min(1),
   WEATHERLINK_STATION_ID: z.string().optional(),
   WEATHERLINK_BASE_URL: z.string().url().default('https://api.weatherlink.com/v2'),
-  DATABASE_URL: z.string().min(1),
+  DATABASE_PATH: z.string().min(1).default('./data/weather.db'),
   PORT: z.coerce.number().int().min(1).max(65535).default(1456),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),

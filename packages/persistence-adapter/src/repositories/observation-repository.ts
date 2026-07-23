@@ -6,7 +6,7 @@ import type {
   Measurement,
 } from '@weather/domain';
 import { observationId, stationId, sensorId } from '@weather/domain';
-import type { Database } from '../db.js';
+import type { DrizzleDatabase as Database } from '../db.js';
 import { observations } from '../schema/observations.js';
 import type { ObservationSource, MeasurementName, CanonicalUnit } from '@weather/domain';
 

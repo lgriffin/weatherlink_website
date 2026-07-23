@@ -1,7 +1,7 @@
-import { pgTable, text, integer, boolean } from 'drizzle-orm/pg-core';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 import { stations } from './stations.js';
 
-export const sensors = pgTable('sensors', {
+export const sensors = sqliteTable('sensors', {
   id: text('id').primaryKey(),
   stationId: text('station_id').notNull().references(() => stations.id),
   lsid: integer('lsid').notNull(),
@@ -9,5 +9,5 @@ export const sensors = pgTable('sensors', {
   dataStructureType: integer('data_structure_type'),
   name: text('name').notNull(),
   category: text('category').notNull(),
-  isActive: boolean('is_active').notNull().default(true),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
 });

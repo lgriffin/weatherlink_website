@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import type { SensorRepository, Sensor, StationId, SensorId, SensorCategory } from '@weather/domain';
 import { sensorId } from '@weather/domain';
-import type { Database } from '../db.js';
+import type { DrizzleDatabase as Database } from '../db.js';
 import { sensors } from '../schema/sensors.js';
 
 export class DrizzleSensorRepository implements SensorRepository {

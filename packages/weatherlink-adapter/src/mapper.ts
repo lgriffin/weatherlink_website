@@ -41,14 +41,14 @@ export function mapIssDataToMeasurements(
   addMeasurement(map, 'wind.speedAvg2Min', data.wind_speed_avg_last_2_min, mphToMs, timestamp);
   addMeasurement(map, 'wind.speedAvg10Min', data.wind_speed_avg_last_10_min, mphToMs, timestamp);
 
-  addMeasurement(map, 'rain.rate', data.rain_rate_last, inchesToMm, timestamp);
-  addMeasurement(map, 'rain.last15Min', data.rainfall_last_15_min, inchesToMm, timestamp);
-  addMeasurement(map, 'rain.last60Min', data.rainfall_last_60_min, inchesToMm, timestamp);
-  addMeasurement(map, 'rain.last24Hr', data.rainfall_last_24_hr, inchesToMm, timestamp);
-  addMeasurement(map, 'rain.daily', data.rainfall_daily, inchesToMm, timestamp);
-  addMeasurement(map, 'rain.monthly', data.rainfall_monthly, inchesToMm, timestamp);
-  addMeasurement(map, 'rain.yearly', data.rainfall_year, inchesToMm, timestamp);
-  addMeasurement(map, 'rain.stormTotal', data.rain_storm, inchesToMm, timestamp);
+  addMeasurement(map, 'rain.rate', data.rain_rate_last ?? data.rain_rate_last_in, inchesToMm, timestamp);
+  addMeasurement(map, 'rain.last15Min', data.rainfall_last_15_min ?? data.rainfall_last_15_min_in, inchesToMm, timestamp);
+  addMeasurement(map, 'rain.last60Min', data.rainfall_last_60_min ?? data.rainfall_last_60_min_in, inchesToMm, timestamp);
+  addMeasurement(map, 'rain.last24Hr', data.rainfall_last_24_hr ?? data.rainfall_last_24_hr_in, inchesToMm, timestamp);
+  addMeasurement(map, 'rain.daily', data.rainfall_daily ?? data.rainfall_daily_in, inchesToMm, timestamp);
+  addMeasurement(map, 'rain.monthly', data.rainfall_monthly ?? data.rainfall_monthly_in, inchesToMm, timestamp);
+  addMeasurement(map, 'rain.yearly', data.rainfall_year ?? data.rainfall_year_in, inchesToMm, timestamp);
+  addMeasurement(map, 'rain.stormTotal', data.rain_storm ?? data.rain_storm_in, inchesToMm, timestamp);
 
   addMeasurement(map, 'solar.radiation', data.solar_rad, null, timestamp);
   addMeasurement(map, 'uv.index', data.uv_index, null, timestamp);
