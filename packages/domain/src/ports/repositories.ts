@@ -2,6 +2,10 @@ import type { StationId, SensorId } from '../types/ids.js';
 import type { WeatherStation } from '../types/station.js';
 import type { Sensor } from '../types/sensor.js';
 import type { Observation } from '../types/observation.js';
+import type { SyncWindow } from '../types/sync-window.js';
+import type { DailySummary } from '../types/daily-summary.js';
+import type { WeatherRecord, RecordScope } from '../types/record.js';
+import type { MeasurementName } from '../types/measurement.js';
 
 export interface StationRepository {
   findById(id: StationId): Promise<WeatherStation | null>;
@@ -27,10 +31,46 @@ export interface ObservationRepository {
   ): Promise<Observation[]>;
   save(observation: Observation): Promise<void>;
   saveMany(observations: Observation[]): Promise<void>;
+  deleteOlderThan(cutoff: Date): Promise<number>;
 }
 
-// Phase 2+ stubs
-export interface DailySummaryRepository {}
-export interface RecordRepository {}
-export interface SyncWindowRepository {}
+export interface SyncWindowRepository {
+  findByStationAndSensor(stationId: StationId, sensorId: SensorId): Promise<SyncWindow[]>;
+  findGaps(
+    stationId: StationId,
+    sensorId: SensorId,
+    from: Date,
+    to: Date,
+  ): Promise<Array<{ from: Date; to: Date }>>;
+  save(syncWindow: SyncWindow): Promise<void>;
+}
+
+export interface DailySummaryRepository {
+  findByStationAndDate(stationId: StationId, date: string): Promise<DailySummary[]>;
+  findByStationAndDateRange(
+    stationId: StationId,
+    fromDate: string,
+    toDate: string,
+  ): Promise<DailySummary[]>;
+  findByStationDateAndMeasurement(
+    stationId: StationId,
+    monthDay: string,
+    measurementName: MeasurementName,
+  ): Promise<DailySummary[]>;
+  save(summary: DailySummary): Promise<void>;
+  saveMany(summaries: DailySummary[]): Promise<void>;
+  deleteOlderThan(cutoff: string): Promise<number>;
+}
+
+export interface RecordRepository {
+  findByStation(stationId: StationId, scope?: RecordScope): Promise<WeatherRecord[]>;
+  findByStationAndMeasurement(
+    stationId: StationId,
+    measurementName: MeasurementName,
+  ): Promise<WeatherRecord[]>;
+  save(record: WeatherRecord): Promise<void>;
+  saveMany(records: WeatherRecord[]): Promise<void>;
+  deleteByStation(stationId: StationId): Promise<void>;
+}
+
 export interface SensorCatalogRepository {}

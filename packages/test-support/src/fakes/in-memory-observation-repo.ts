@@ -31,6 +31,12 @@ export class InMemoryObservationRepository implements ObservationRepository {
     this.observations.push(...observationList);
   }
 
+  async deleteOlderThan(cutoff: Date): Promise<number> {
+    const before = this.observations.length;
+    this.observations = this.observations.filter((o) => o.timestamp >= cutoff);
+    return before - this.observations.length;
+  }
+
   getAll(): Observation[] {
     return [...this.observations];
   }

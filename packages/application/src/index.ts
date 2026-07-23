@@ -3,3 +3,13 @@ export { GetCurrentDashboard, type DashboardResult } from './use-cases/get-curre
 export { DiscoverStations } from './use-cases/discover-stations.js';
 export { SelectStation } from './use-cases/select-station.js';
 export { GetSystemHealth } from './use-cases/get-system-health.js';
+export { SyncHistoricData } from './use-cases/sync-historic-data.js';
+export { BackfillHistoricData } from './use-cases/backfill-historic-data.js';
+export { ComputeDailySummaries } from './use-cases/compute-daily-summaries.js';
+export { ComputeRecords } from './use-cases/compute-records.js';
+export { GetRecords } from './use-cases/get-records.js';
+export { GetHistory, type HistoryResult } from './use-cases/get-history.js';
+export { GetTimeSeries } from './use-cases/get-time-series.js';
+export { ExportData, ExportTooLargeError } from './use-cases/export-data.js';
+export { EvaluateAlerts } from './use-cases/evaluate-alerts.js';
+export { CleanupOldData } from './use-cases/cleanup-old-data.js';

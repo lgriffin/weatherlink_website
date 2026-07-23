@@ -4,6 +4,7 @@ export class FakeWeatherDataSource implements WeatherDataSource {
   stations: WeatherStation[] = [];
   sensors: Sensor[] = [];
   observations: Observation[] = [];
+  historicObservations: Observation[] = [];
   shouldThrow: Error | null = null;
 
   async discoverStations(): Promise<WeatherStation[]> {
@@ -19,5 +20,14 @@ export class FakeWeatherDataSource implements WeatherDataSource {
   async getCurrentConditions(_stationId: StationId): Promise<Observation[]> {
     if (this.shouldThrow) throw this.shouldThrow;
     return this.observations;
+  }
+
+  async getHistoricConditions(
+    _stationId: StationId,
+    _startTimestamp: number,
+    _endTimestamp: number,
+  ): Promise<Observation[]> {
+    if (this.shouldThrow) throw this.shouldThrow;
+    return this.historicObservations;
   }
 }

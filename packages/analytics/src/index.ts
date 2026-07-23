@@ -1,3 +1,4 @@
-// Phase 3: Aggregation, records, and trends
-// Phase 4: Series queries and chart data
-export {};
+export { computeDailySummaries } from './aggregation-service.js';
+export { deriveRecords } from './records-service.js';
+export { buildSeriesFromObservations, buildSeriesFromSummaries } from './series-service.js';
+export type { Resolution, SeriesPoint, SeriesResult } from './series-service.js';
