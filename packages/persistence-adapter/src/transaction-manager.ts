@@ -1,5 +1,5 @@
 import type { TransactionManager } from '@weather/domain';
-import type { Database } from './db.js';
+import type { DrizzleDatabase as Database } from './db.js';
 
 export class DrizzleTransactionManager implements TransactionManager {
   constructor(private readonly db: Database) {}

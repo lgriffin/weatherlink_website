@@ -3,8 +3,6 @@ import { z } from 'zod';
 const numOrNull = z.number().nullable().optional();
 
 export const IssConditionsSchema = z.object({
-  lsid: z.number(),
-  data_structure_type: z.number(),
   ts: z.number(),
   temp: numOrNull,
   hum: numOrNull,
@@ -38,6 +36,17 @@ export const IssConditionsSchema = z.object({
   rainfall_daily: numOrNull,
   rainfall_monthly: numOrNull,
   rainfall_year: numOrNull,
+  // Data structure type 10 (Vantage Vue) uses _in suffixed field names
+  rain_rate_last_in: numOrNull,
+  rain_rate_hi_in: numOrNull,
+  rainfall_last_15_min_in: numOrNull,
+  rain_rate_hi_last_15_min_in: numOrNull,
+  rainfall_last_60_min_in: numOrNull,
+  rainfall_last_24_hr_in: numOrNull,
+  rain_storm_in: numOrNull,
+  rainfall_daily_in: numOrNull,
+  rainfall_monthly_in: numOrNull,
+  rainfall_year_in: numOrNull,
   solar_rad: numOrNull,
   uv_index: numOrNull,
   trans_battery_flag: numOrNull,
@@ -47,8 +56,6 @@ export const IssConditionsSchema = z.object({
 export type IssConditions = z.infer<typeof IssConditionsSchema>;
 
 export const BarometerConditionsSchema = z.object({
-  lsid: z.number(),
-  data_structure_type: z.number(),
   ts: z.number(),
   bar_sea_level: numOrNull,
   bar_trend: numOrNull,
@@ -60,7 +67,7 @@ export type BarometerConditions = z.infer<typeof BarometerConditionsSchema>;
 export const WeatherLinkSensorDataSchema = z.object({
   lsid: z.number(),
   sensor_type: z.number(),
-  data_structure_type: z.number().optional(),
+  data_structure_type: z.number().nullable().optional(),
   data: z.array(z.record(z.unknown())),
 });
 

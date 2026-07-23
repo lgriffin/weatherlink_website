@@ -21,7 +21,7 @@ const logger = createLogger({ level: env.LOG_LEVEL, name: 'api' });
 const metrics = new PrometheusMetrics();
 const clock = new SystemClock();
 
-const { db, pool } = createDatabase(env.DATABASE_URL);
+const { db, client } = await createDatabase(env.DATABASE_PATH);
 
 const weatherLinkClient = new WeatherLinkClient(
   env.WEATHERLINK_API_KEY,
@@ -49,7 +49,7 @@ const healthChecker = new HealthChecker();
 healthChecker.registerCheck('database', async () => {
   const start = Date.now();
   try {
-    await pool.query('SELECT 1');
+    await client.execute('SELECT 1');
     return { name: 'database', status: 'up', latencyMs: Date.now() - start, message: null };
   } catch {
     return { name: 'database', status: 'down', latencyMs: Date.now() - start, message: 'Database connection failed' };
@@ -72,7 +72,7 @@ registerMetricsRoutes(app, { metrics });
 const shutdown = async (signal: string) => {
   logger.info({ signal }, 'Shutting down gracefully');
   await app.close();
-  await pool.end();
+  client.close();
   process.exit(0);
 };
 

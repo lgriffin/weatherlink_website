@@ -37,5 +37,10 @@ Desktop.ini
 .turbo/
 .vite/
 
+# SQLite
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
 # Claude Code
 .claude/

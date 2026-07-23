@@ -16,7 +16,7 @@ const logger = createLogger({ level: env.LOG_LEVEL, name: 'worker' });
 const metrics = new PrometheusMetrics();
 const clock = new SystemClock();
 
-const { db, pool } = createDatabase(env.DATABASE_URL);
+const { db, client } = await createDatabase(env.DATABASE_PATH);
 
 const weatherLinkClient = new WeatherLinkClient(
   env.WEATHERLINK_API_KEY,
@@ -59,7 +59,7 @@ const timer = setInterval(poll, pollIntervalMs);
 const shutdown = async (signal: string) => {
   logger.info({ signal }, 'Worker shutting down');
   clearInterval(timer);
-  await pool.end();
+  client.close();
   process.exit(0);
 };
 

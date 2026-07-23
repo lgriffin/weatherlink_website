@@ -18,11 +18,12 @@ import {
 } from './mapper.js';
 import { createHash } from 'node:crypto';
 
-const ISS_SENSOR_TYPE = 45;
+const ISS_SENSOR_TYPES = [43, 45];
 const BAROMETER_SENSOR_TYPE = 242;
 
 function categorizeSensor(sensorType: number): SensorCategory {
   switch (sensorType) {
+    case 43:
     case 45: return 'iss';
     case 242: return 'barometer';
     case 108: return 'soil';
@@ -89,7 +90,7 @@ export class WeatherLinkDataSource implements WeatherDataSource {
       if (!sensor.data[0]) continue;
       const rawData = sensor.data[0];
 
-      if (sensor.sensor_type === ISS_SENSOR_TYPE) {
+      if (ISS_SENSOR_TYPES.includes(sensor.sensor_type)) {
         const parsed = IssConditionsSchema.safeParse(rawData);
         if (parsed.success) {
           issTimestamp = new Date((parsed.data.ts ?? Math.floor(now.getTime() / 1000)) * 1000);

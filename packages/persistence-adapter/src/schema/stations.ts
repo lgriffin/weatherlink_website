@@ -1,6 +1,6 @@
-import { pgTable, text, boolean, real, timestamp } from 'drizzle-orm/pg-core';
+import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 
-export const stations = pgTable('stations', {
+export const stations = sqliteTable('stations', {
   id: text('id').primaryKey(),
   weatherLinkStationId: text('weatherlink_station_id').notNull(),
   name: text('name').notNull(),
@@ -8,7 +8,7 @@ export const stations = pgTable('stations', {
   latitude: real('latitude'),
   longitude: real('longitude'),
   elevationMetres: real('elevation_metres'),
-  isActive: boolean('is_active').notNull().default(true),
-  registeredAt: timestamp('registered_at', { withTimezone: true }).notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  registeredAt: integer('registered_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });

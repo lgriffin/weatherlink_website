@@ -5,7 +5,7 @@ describe('EnvSchema', () => {
   const validEnv = {
     WEATHERLINK_API_KEY: 'test-key',
     WEATHERLINK_API_SECRET: 'test-secret',
-    DATABASE_URL: 'postgresql://weather:weather@localhost:5432/weather',
+    DATABASE_PATH: './data/weather.db',
   };
 
   it('accepts valid minimal configuration', () => {
@@ -41,12 +41,12 @@ describe('EnvSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects missing DATABASE_URL', () => {
-    const result = EnvSchema.safeParse({
+  it('applies default DATABASE_PATH', () => {
+    const result = EnvSchema.parse({
       WEATHERLINK_API_KEY: 'key',
       WEATHERLINK_API_SECRET: 'secret',
     });
-    expect(result.success).toBe(false);
+    expect(result.DATABASE_PATH).toBe('./data/weather.db');
   });
 
   it('coerces PORT from string', () => {
