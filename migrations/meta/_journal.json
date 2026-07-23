@@ -8,6 +8,20 @@
       "when": 1784814963964,
       "tag": "0000_groovy_warhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1784819208446,
+      "tag": "0001_true_the_santerians",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784819562698,
+      "tag": "0002_overrated_korg",
+      "breakpoints": true
     }
   ]
 }

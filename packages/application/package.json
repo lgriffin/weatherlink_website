@@ -11,7 +11,9 @@
     "build": "tsc"
   },
   "dependencies": {
+    "@weather/analytics": "workspace:*",
     "@weather/domain": "workspace:*",
+    "@weather/exports": "workspace:*",
     "@weather/observability": "workspace:*"
   },
   "devDependencies": {

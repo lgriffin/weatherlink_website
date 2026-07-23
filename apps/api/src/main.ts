@@ -4,11 +4,32 @@ import { EnvSchema } from '@weather/contracts';
 import { SystemClock } from '@weather/domain';
 import { createLogger, PrometheusMetrics, HealthChecker } from '@weather/observability';
 import { WeatherLinkClient, WeatherLinkDataSource } from '@weather/weatherlink-adapter';
-import { createDatabase, DrizzleStationRepository, DrizzleSensorRepository, DrizzleObservationRepository } from '@weather/persistence-adapter';
-import { PollCurrentConditions, GetCurrentDashboard, DiscoverStations, SelectStation, GetSystemHealth } from '@weather/application';
+import {
+  createDatabase,
+  DrizzleStationRepository,
+  DrizzleSensorRepository,
+  DrizzleObservationRepository,
+  DrizzleDailySummaryRepository,
+  DrizzleRecordRepository,
+} from '@weather/persistence-adapter';
+import {
+  PollCurrentConditions,
+  GetCurrentDashboard,
+  DiscoverStations,
+  SelectStation,
+  GetSystemHealth,
+  GetRecords,
+  GetHistory,
+  GetTimeSeries,
+  ExportData,
+} from '@weather/application';
 import {
   registerStationRoutes,
   registerCurrentRoutes,
+  registerRecordsRoutes,
+  registerHistoryRoutes,
+  registerSeriesRoutes,
+  registerExportsRoutes,
   registerHealthRoutes,
   registerMetricsRoutes,
   registerRequestLogging,
@@ -34,6 +55,8 @@ const weatherSource = new WeatherLinkDataSource(weatherLinkClient, logger);
 const stationRepo = new DrizzleStationRepository(db);
 const sensorRepo = new DrizzleSensorRepository(db);
 const observationRepo = new DrizzleObservationRepository(db);
+const dailySummaryRepo = new DrizzleDailySummaryRepository(db);
+const recordRepo = new DrizzleRecordRepository(db);
 
 const pollCurrentConditions = new PollCurrentConditions(
   weatherSource, stationRepo, observationRepo, metrics, clock, logger,
@@ -57,6 +80,10 @@ healthChecker.registerCheck('database', async () => {
 });
 
 const getSystemHealth = new GetSystemHealth(healthChecker);
+const getRecords = new GetRecords(stationRepo, recordRepo);
+const getHistory = new GetHistory(stationRepo, dailySummaryRepo);
+const getTimeSeries = new GetTimeSeries(stationRepo, observationRepo, dailySummaryRepo);
+const exportData = new ExportData(stationRepo, observationRepo);
 
 const app = Fastify({ logger: false });
 
@@ -66,6 +93,10 @@ registerRequestLogging(app, logger);
 registerErrorHandler(app, logger);
 registerStationRoutes(app, { stationRepo });
 registerCurrentRoutes(app, { getCurrentDashboard });
+registerRecordsRoutes(app, { getRecords });
+registerHistoryRoutes(app, { getHistory });
+registerSeriesRoutes(app, { getTimeSeries });
+registerExportsRoutes(app, { exportData });
 registerHealthRoutes(app, { healthChecker });
 registerMetricsRoutes(app, { metrics });
 

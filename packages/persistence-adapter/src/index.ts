@@ -2,5 +2,8 @@ export { createDatabase, type DrizzleDatabase as Database, type SqliteClient } f
 export { DrizzleStationRepository } from './repositories/station-repository.js';
 export { DrizzleSensorRepository } from './repositories/sensor-repository.js';
 export { DrizzleObservationRepository } from './repositories/observation-repository.js';
+export { DrizzleSyncWindowRepository } from './repositories/sync-window-repository.js';
+export { DrizzleDailySummaryRepository } from './repositories/daily-summary-repository.js';
+export { DrizzleRecordRepository } from './repositories/record-repository.js';
 export { DrizzleTransactionManager } from './transaction-manager.js';
 export * as schema from './schema/index.js';

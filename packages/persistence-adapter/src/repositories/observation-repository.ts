@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, desc } from 'drizzle-orm';
+import { eq, and, gte, lte, lt, desc, sql } from 'drizzle-orm';
 import type {
   ObservationRepository,
   Observation,
@@ -86,6 +86,14 @@ export class DrizzleObservationRepository implements ObservationRepository {
       measurements: measurementMap,
       rawPayloadHash: row.rawPayloadHash,
     };
+  }
+
+  async deleteOlderThan(cutoff: Date): Promise<number> {
+    const result = await this.db
+      .delete(observations)
+      .where(lt(observations.timestamp, cutoff))
+      .returning({ id: observations.id });
+    return result.length;
   }
 
   private toRow(observation: Observation) {

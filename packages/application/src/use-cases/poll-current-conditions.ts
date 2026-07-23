@@ -4,6 +4,7 @@ import type {
   ObservationRepository,
   ApplicationMetrics,
   Clock,
+  Observation,
 } from '@weather/domain';
 import type { Logger } from '@weather/observability';
 
@@ -17,11 +18,11 @@ export class PollCurrentConditions {
     private readonly logger: Logger,
   ) {}
 
-  async execute(): Promise<void> {
+  async execute(): Promise<Observation[]> {
     const station = await this.stationRepo.findActive();
     if (!station) {
       this.logger.warn('No active station configured, skipping poll');
-      return;
+      return [];
     }
 
     const startTime = this.clock.now();
@@ -37,6 +38,8 @@ export class PollCurrentConditions {
         { stationId: String(station.id), observationCount: observations.length, durationMs },
         'Poll completed',
       );
+
+      return observations;
     } catch (error) {
       this.metrics.incrementCounter('weather_poll_total', { status: 'error' });
       this.logger.error({ err: error, stationId: String(station.id) }, 'Poll failed');

@@ -11,9 +11,11 @@
     "build": "tsc"
   },
   "dependencies": {
+    "@weather/analytics": "workspace:*",
     "@weather/domain": "workspace:*"
   },
   "devDependencies": {
+    "@weather/test-support": "workspace:*",
     "typescript": "^5.7.0"
   }
 }

@@ -13,9 +13,11 @@
   "dependencies": {
     "fastify": "^5.0.0",
     "@fastify/cors": "^10.0.0",
+    "@weather/analytics": "workspace:*",
     "@weather/domain": "workspace:*",
     "@weather/application": "workspace:*",
     "@weather/contracts": "workspace:*",
+    "@weather/exports": "workspace:*",
     "@weather/observability": "workspace:*"
   },
   "devDependencies": {

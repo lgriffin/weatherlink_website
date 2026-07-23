@@ -76,6 +76,69 @@ export class WeatherLinkDataSource implements WeatherDataSource {
       }));
   }
 
+  async getHistoricConditions(
+    targetStationId: StationId,
+    startTimestamp: number,
+    endTimestamp: number,
+  ): Promise<Observation[]> {
+    const response = await this.client.getHistoric(
+      Number(targetStationId),
+      startTimestamp,
+      endTimestamp,
+    );
+    const now = new Date();
+    const observations: Observation[] = [];
+
+    for (const sensor of response.sensors) {
+      if (!ISS_SENSOR_TYPES.includes(sensor.sensor_type) && sensor.sensor_type !== BAROMETER_SENSOR_TYPE) {
+        continue;
+      }
+
+      for (const rawData of sensor.data) {
+        let measurements = new Map<string, import('@weather/domain').Measurement>();
+        let ts = now;
+
+        if (ISS_SENSOR_TYPES.includes(sensor.sensor_type)) {
+          const parsed = IssConditionsSchema.safeParse(rawData);
+          if (!parsed.success) {
+            this.logger.warn({ errors: parsed.error.issues }, 'Failed to parse historic ISS data');
+            continue;
+          }
+          ts = new Date((parsed.data.ts ?? Math.floor(now.getTime() / 1000)) * 1000);
+          measurements = mapIssDataToMeasurements(parsed.data, ts);
+        } else if (sensor.sensor_type === BAROMETER_SENSOR_TYPE) {
+          const parsed = BarometerConditionsSchema.safeParse(rawData);
+          if (!parsed.success) {
+            this.logger.warn({ errors: parsed.error.issues }, 'Failed to parse historic barometer data');
+            continue;
+          }
+          ts = new Date((parsed.data.ts ?? Math.floor(now.getTime() / 1000)) * 1000);
+          measurements = mapBarometerDataToMeasurements(parsed.data, ts);
+        }
+
+        if (measurements.size > 0) {
+          const payloadHash = createHash('sha256')
+            .update(JSON.stringify(Object.fromEntries(measurements)))
+            .digest('hex')
+            .substring(0, 16);
+
+          observations.push({
+            id: observationId(randomUUID()),
+            stationId: targetStationId,
+            sensorId: sensorId(String(sensor.lsid)),
+            timestamp: ts,
+            receivedAt: now,
+            source: 'historic',
+            measurements,
+            rawPayloadHash: payloadHash,
+          });
+        }
+      }
+    }
+
+    return observations;
+  }
+
   async getCurrentConditions(targetStationId: StationId): Promise<Observation[]> {
     const response = await this.client.getCurrentConditions(Number(targetStationId));
     const now = new Date();

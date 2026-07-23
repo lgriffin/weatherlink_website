@@ -7,4 +7,9 @@ export interface WeatherDataSource {
   discoverStations(): Promise<WeatherStation[]>;
   getSensors(stationId: StationId): Promise<Sensor[]>;
   getCurrentConditions(stationId: StationId): Promise<Observation[]>;
+  getHistoricConditions(
+    stationId: StationId,
+    startTimestamp: number,
+    endTimestamp: number,
+  ): Promise<Observation[]>;
 }
