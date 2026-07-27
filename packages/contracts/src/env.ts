@@ -15,7 +15,7 @@ export const EnvSchema = z.object({
   CURRENT_STALE_AFTER_SECONDS: z.coerce.number().int().min(1).default(900),
   METRICS_ENABLED: z.coerce.boolean().default(true),
   HISTORIC_SYNC_INTERVAL_MS: z.coerce.number().int().min(60000).default(900000),
-  HISTORIC_BACKFILL_DAYS: z.coerce.number().int().min(1).default(7),
+  HISTORIC_BACKFILL_DAYS: z.coerce.number().int().min(0).default(0),
   RETENTION_OBSERVATION_MAX_AGE_DAYS: z.coerce.number().int().min(1).default(365),
   RETENTION_SUMMARY_MAX_AGE_DAYS: z.coerce.number().int().min(1).default(3650),
   CLEANUP_INTERVAL_MS: z.coerce.number().int().min(3600000).default(86400000),

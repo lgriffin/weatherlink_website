@@ -42,7 +42,9 @@ export class BackfillHistoricData {
     }
 
     const now = this.clock.now();
-    const backfillStart = new Date(now.getTime() - this.backfillDays * ONE_DAY_SECONDS * 1000);
+    const backfillStart = this.backfillDays > 0
+      ? new Date(now.getTime() - this.backfillDays * ONE_DAY_SECONDS * 1000)
+      : station.registeredAt;
 
     const gaps = await this.syncWindowRepo.findGaps(
       station.id,

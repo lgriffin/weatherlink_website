@@ -65,6 +65,15 @@ export class DrizzleDailySummaryRepository implements DailySummaryRepository {
     return rows.map((r) => this.toDomain(r));
   }
 
+  async findDistinctDatesByStation(targetStationId: StationId): Promise<string[]> {
+    const rows = await this.db
+      .selectDistinct({ date: dailySummaries.date })
+      .from(dailySummaries)
+      .where(eq(dailySummaries.stationId, String(targetStationId)))
+      .orderBy(dailySummaries.date);
+    return rows.map((r) => r.date);
+  }
+
   async save(summary: DailySummary): Promise<void> {
     await this.db
       .insert(dailySummaries)

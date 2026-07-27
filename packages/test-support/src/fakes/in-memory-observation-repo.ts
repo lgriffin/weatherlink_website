@@ -23,6 +23,16 @@ export class InMemoryObservationRepository implements ObservationRepository {
     );
   }
 
+  async findDistinctDatesByStation(stationId: StationId): Promise<string[]> {
+    const dates = new Set<string>();
+    for (const o of this.observations) {
+      if (o.stationId === stationId) {
+        dates.add(o.timestamp.toISOString().substring(0, 10));
+      }
+    }
+    return Array.from(dates).sort();
+  }
+
   async save(observation: Observation): Promise<void> {
     this.observations.push(observation);
   }

@@ -15,7 +15,7 @@ function SystemPage() {
 
   return (
     <div>
-      <h2 style={{ marginBottom: '24px' }}>System Status</h2>
+      <h2 className="page-title">System Status</h2>
 
       {healthQuery.isPending && (
         <div className="loading-container">Loading system status...</div>

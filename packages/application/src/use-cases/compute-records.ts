@@ -3,7 +3,7 @@ import type {
   DailySummaryRepository,
   RecordRepository,
 } from '@weather/domain';
-import { deriveRecords } from '@weather/analytics';
+import { deriveRecords, deriveDerivedRecords } from '@weather/analytics';
 import type { Logger } from '@weather/observability';
 
 export class ComputeRecords {
@@ -30,11 +30,16 @@ export class ComputeRecords {
       return;
     }
 
-    const records = deriveRecords(station.id, allSummaries);
+    const standardRecords = deriveRecords(station.id, allSummaries);
+    const derived = deriveDerivedRecords(station.id, allSummaries);
+    const records = [...standardRecords, ...derived];
 
     await this.recordRepo.deleteByStation(station.id);
     await this.recordRepo.saveMany(records);
 
-    this.logger.info({ recordCount: records.length }, 'Records recomputed');
+    this.logger.info(
+      { recordCount: records.length, standardCount: standardRecords.length, derivedCount: derived.length },
+      'Records recomputed',
+    );
   }
 }

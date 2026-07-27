@@ -5,9 +5,10 @@ export const RecordResponseSchema = z.object({
   unit: z.string(),
   scope: z.enum(['all-time', 'monthly', 'yearly']),
   scopeKey: z.string(),
-  recordType: z.enum(['high', 'low']),
+  recordType: z.enum(['high', 'low', 'streak', 'count', 'derived']),
   value: z.number(),
   date: z.string(),
+  description: z.string().optional(),
 });
 
 export type RecordResponse = z.infer<typeof RecordResponseSchema>;

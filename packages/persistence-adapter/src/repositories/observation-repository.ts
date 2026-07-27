@@ -49,6 +49,15 @@ export class DrizzleObservationRepository implements ObservationRepository {
     return rows.map((r) => this.toDomain(r));
   }
 
+  async findDistinctDatesByStation(targetStationId: StationId): Promise<string[]> {
+    const rows = await this.db
+      .selectDistinct({ d: sql<string>`date(${observations.timestamp}, 'unixepoch')` })
+      .from(observations)
+      .where(eq(observations.stationId, String(targetStationId)))
+      .orderBy(sql`date(${observations.timestamp}, 'unixepoch')`);
+    return rows.map((r) => r.d);
+  }
+
   async save(observation: Observation): Promise<void> {
     await this.db
       .insert(observations)

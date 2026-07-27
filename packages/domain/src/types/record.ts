@@ -3,7 +3,7 @@ import type { MeasurementName } from './measurement.js';
 import type { CanonicalUnit } from './units.js';
 
 export type RecordScope = 'all-time' | 'monthly' | 'yearly';
-export type RecordType = 'high' | 'low';
+export type RecordType = 'high' | 'low' | 'streak' | 'count' | 'derived';
 
 export interface WeatherRecord {
   readonly stationId: StationId;
@@ -14,4 +14,5 @@ export interface WeatherRecord {
   readonly recordType: RecordType;
   readonly value: number;
   readonly date: string;
+  readonly description?: string | undefined;
 }

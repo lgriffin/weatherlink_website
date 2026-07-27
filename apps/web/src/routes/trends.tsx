@@ -4,7 +4,9 @@ import { useState, useMemo } from 'react';
 import {
   ResponsiveContainer,
   LineChart,
+  AreaChart,
   Line,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -12,57 +14,25 @@ import {
   Legend,
 } from 'recharts';
 import { fetchTimeSeries } from '../api/client';
+import { SegmentedControl } from '../components/SegmentedControl';
+import { ChartCard } from '../components/ChartCard';
+import { CHART_GROUPS, getColor } from '../config/measurements';
 
 export const Route = createFileRoute('/trends')({
   component: TrendsPage,
 });
 
-const METRIC_GROUPS = [
-  {
-    label: 'Temperature',
-    metrics: [
-      { key: 'temperature.outdoor', label: 'Outdoor', color: '#ef4444' },
-      { key: 'temperature.dewPoint', label: 'Dew Point', color: '#3b82f6' },
-      { key: 'temperature.heatIndex', label: 'Heat Index', color: '#f97316' },
-      { key: 'temperature.windChill', label: 'Wind Chill', color: '#06b6d4' },
-    ],
-  },
-  {
-    label: 'Moisture',
-    metrics: [
-      { key: 'humidity.outdoor', label: 'Humidity', color: '#8b5cf6' },
-      { key: 'rain.rate', label: 'Rain Rate', color: '#2563eb' },
-      { key: 'rain.daily', label: 'Daily Rain', color: '#0891b2' },
-    ],
-  },
-  {
-    label: 'Wind',
-    metrics: [
-      { key: 'wind.speed', label: 'Speed', color: '#22c55e' },
-      { key: 'wind.gust', label: 'Gust', color: '#f59e0b' },
-    ],
-  },
-  {
-    label: 'Pressure & Solar',
-    metrics: [
-      { key: 'pressure.seaLevel', label: 'Pressure', color: '#a855f7' },
-      { key: 'solar.radiation', label: 'Solar', color: '#eab308' },
-      { key: 'uv.index', label: 'UV Index', color: '#f43f5e' },
-    ],
-  },
+const PRESETS = [
+  { key: '24', label: '24h', hours: 24 },
+  { key: '168', label: '7d', hours: 168 },
+  { key: '720', label: '30d', hours: 720 },
 ];
 
 const RESOLUTIONS = [
   { key: 'raw', label: 'Raw' },
   { key: 'hourly', label: 'Hourly' },
   { key: 'daily', label: 'Daily' },
-] as const;
-
-const PRESETS = [
-  { label: '24h', hours: 24 },
-  { label: '7d', hours: 168 },
-  { label: '30d', hours: 720 },
-] as const;
+];
 
 function TrendsPage() {
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(['temperature.outdoor']);
@@ -84,27 +54,14 @@ function TrendsPage() {
     enabled: selectedMetrics.length > 0,
   });
 
-  const chartData = useMemo(() => {
-    if (!data?.series.length) return [];
-    const byTimestamp = new Map<number, Record<string, number | null>>();
-
+  const seriesByMetric = useMemo(() => {
+    const map = new Map<string, Array<{ timestamp: number; value: number | null }>>();
+    if (!data?.series) return map;
     for (const s of data.series) {
-      for (const p of s.points) {
-        let entry = byTimestamp.get(p.timestamp);
-        if (!entry) {
-          entry = {};
-          byTimestamp.set(p.timestamp, entry);
-        }
-        entry[s.metric] = p.value;
-      }
+      map.set(s.metric, s.points);
     }
-
-    return Array.from(byTimestamp.entries())
-      .map(([ts, values]) => ({ timestamp: ts, ...values }))
-      .sort((a, b) => a.timestamp - b.timestamp);
+    return map;
   }, [data]);
-
-  const allMetrics = METRIC_GROUPS.flatMap((g) => g.metrics);
 
   function toggleMetric(key: string) {
     setSelectedMetrics((prev) =>
@@ -112,81 +69,48 @@ function TrendsPage() {
     );
   }
 
+  const activeGroups = CHART_GROUPS.filter((g) =>
+    g.metrics.some((m) => selectedMetrics.includes(m.key)),
+  );
+
   return (
     <div>
-      <h2 style={{ marginBottom: '16px' }}>Trends</h2>
+      <h2 className="page-title">Trends</h2>
 
-      <div style={{ display: 'flex', gap: '24px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
-            Range
-          </div>
-          <div style={{ display: 'flex', gap: '4px' }}>
-            {PRESETS.map((p) => (
-              <button
-                key={p.label}
-                onClick={() => setHoursBack(p.hours)}
-                style={{
-                  padding: '6px 12px',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius)',
-                  background: hoursBack === p.hours ? 'var(--color-primary)' : 'var(--color-surface)',
-                  color: hoursBack === p.hours ? '#fff' : 'var(--color-text)',
-                  cursor: 'pointer',
-                  fontSize: '0.8rem',
-                }}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+      <div className="control-bar">
+        <div className="control-group">
+          <span className="control-group__label">Range</span>
+          <SegmentedControl
+            options={PRESETS}
+            value={String(hoursBack)}
+            onChange={(k) => setHoursBack(Number(k))}
+          />
         </div>
-
-        <div>
-          <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
-            Resolution
-          </div>
-          <div style={{ display: 'flex', gap: '4px' }}>
-            {RESOLUTIONS.map((r) => (
-              <button
-                key={r.key}
-                onClick={() => setResolution(r.key)}
-                style={{
-                  padding: '6px 12px',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius)',
-                  background: resolution === r.key ? 'var(--color-primary)' : 'var(--color-surface)',
-                  color: resolution === r.key ? '#fff' : 'var(--color-text)',
-                  cursor: 'pointer',
-                  fontSize: '0.8rem',
-                }}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
+        <div className="control-group">
+          <span className="control-group__label">Resolution</span>
+          <SegmentedControl
+            options={RESOLUTIONS}
+            value={resolution}
+            onChange={setResolution}
+          />
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        {METRIC_GROUPS.map((group) => (
-          <div key={group.label}>
-            <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '4px' }}>
-              {group.label}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              {group.metrics.map((m) => (
-                <label key={m.key} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedMetrics.includes(m.key)}
-                    onChange={() => toggleMetric(m.key)}
-                  />
-                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: m.color, display: 'inline-block' }} />
-                  {m.label}
-                </label>
-              ))}
-            </div>
+      <div className="metric-chips">
+        {CHART_GROUPS.map((group) => (
+          <div key={group.key} className="metric-chips__group">
+            <div className="metric-chips__group-label">{group.label}</div>
+            {group.metrics.map((m) => (
+              <label key={m.key} className="metric-chip">
+                <input
+                  type="checkbox"
+                  checked={selectedMetrics.includes(m.key)}
+                  onChange={() => toggleMetric(m.key)}
+                />
+                <span className="metric-chip__dot" style={{ background: getColor(m.key) }} />
+                {m.label}
+              </label>
+            ))}
           </div>
         ))}
       </div>
@@ -194,55 +118,123 @@ function TrendsPage() {
       {isPending && <div className="loading-container">Loading chart data...</div>}
       {isError && <div className="error-container">Failed to load data: {error.message}</div>}
 
-      {chartData.length > 0 && (
-        <div className="measurement-card" style={{ padding: '16px' }}>
-          <ResponsiveContainer width="100%" height={400}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-              <XAxis
-                dataKey="timestamp"
-                tickFormatter={(ts: number) => {
-                  const d = new Date(ts);
-                  return hoursBack <= 48
-                    ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
-                }}
-                stroke="var(--color-text-muted)"
-                fontSize={12}
-              />
-              <YAxis stroke="var(--color-text-muted)" fontSize={12} />
-              <Tooltip
-                labelFormatter={(ts) => new Date(Number(ts)).toLocaleString()}
-                contentStyle={{
-                  background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius)',
-                }}
-              />
-              <Legend />
-              {selectedMetrics.map((metric) => {
-                const meta = allMetrics.find((m) => m.key === metric);
-                return (
-                  <Line
-                    key={metric}
-                    type="monotone"
-                    dataKey={metric}
-                    name={meta?.label ?? metric}
-                    stroke={meta?.color ?? '#888'}
-                    dot={false}
-                    strokeWidth={2}
-                    connectNulls
-                  />
-                );
-              })}
-            </LineChart>
-          </ResponsiveContainer>
+      {activeGroups.length > 0 && (
+        <div className="chart-grid">
+          {activeGroups.map((group) => {
+            const groupMetrics = group.metrics.filter((m) => selectedMetrics.includes(m.key));
+            const chartData = buildChartData(groupMetrics.map((m) => m.key), seriesByMetric);
+
+            if (chartData.length === 0) return null;
+
+            return (
+              <ChartCard key={group.key} title={group.label} subtitle={group.unit || undefined}>
+                <ResponsiveContainer width="100%" height={300}>
+                  {group.useArea ? (
+                    <AreaChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                      <XAxis
+                        dataKey="timestamp"
+                        tickFormatter={(ts: number) => formatTick(ts, hoursBack)}
+                        stroke="var(--color-text-muted)"
+                        fontSize={12}
+                      />
+                      <YAxis stroke="var(--color-text-muted)" fontSize={12} />
+                      <Tooltip
+                        labelFormatter={(ts) => new Date(Number(ts)).toLocaleString()}
+                        contentStyle={tooltipStyle}
+                      />
+                      <Legend />
+                      {groupMetrics.map((m) => (
+                        <Area
+                          key={m.key}
+                          type="monotone"
+                          dataKey={m.key}
+                          name={m.label}
+                          stroke={getColor(m.key)}
+                          fill={getColor(m.key)}
+                          fillOpacity={0.15}
+                          strokeWidth={2}
+                          dot={false}
+                          connectNulls
+                        />
+                      ))}
+                    </AreaChart>
+                  ) : (
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                      <XAxis
+                        dataKey="timestamp"
+                        tickFormatter={(ts: number) => formatTick(ts, hoursBack)}
+                        stroke="var(--color-text-muted)"
+                        fontSize={12}
+                      />
+                      <YAxis stroke="var(--color-text-muted)" fontSize={12} />
+                      <Tooltip
+                        labelFormatter={(ts) => new Date(Number(ts)).toLocaleString()}
+                        contentStyle={tooltipStyle}
+                      />
+                      <Legend />
+                      {groupMetrics.map((m) => (
+                        <Line
+                          key={m.key}
+                          type="monotone"
+                          dataKey={m.key}
+                          name={m.label}
+                          stroke={getColor(m.key)}
+                          dot={false}
+                          strokeWidth={2}
+                          connectNulls
+                        />
+                      ))}
+                    </LineChart>
+                  )}
+                </ResponsiveContainer>
+              </ChartCard>
+            );
+          })}
         </div>
       )}
 
-      {data && chartData.length === 0 && selectedMetrics.length > 0 && (
+      {data && activeGroups.length === 0 && selectedMetrics.length > 0 && (
         <div className="loading-container">No data points for the selected range and metrics.</div>
       )}
     </div>
+  );
+}
+
+const tooltipStyle = {
+  background: 'var(--color-surface)',
+  border: '1px solid var(--color-border)',
+  borderRadius: 'var(--radius)',
+};
+
+function formatTick(ts: number, hoursBack: number): string {
+  const d = new Date(ts);
+  return hoursBack <= 48
+    ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+function buildChartData(
+  keys: string[],
+  seriesByMetric: Map<string, Array<{ timestamp: number; value: number | null }>>,
+): Array<Record<string, number | null>> {
+  const byTimestamp = new Map<number, Record<string, number | null>>();
+
+  for (const key of keys) {
+    const points = seriesByMetric.get(key);
+    if (!points) continue;
+    for (const p of points) {
+      let entry = byTimestamp.get(p.timestamp);
+      if (!entry) {
+        entry = { timestamp: p.timestamp };
+        byTimestamp.set(p.timestamp, entry);
+      }
+      entry[key] = p.value;
+    }
+  }
+
+  return Array.from(byTimestamp.values()).sort(
+    (a, b) => (a.timestamp as number) - (b.timestamp as number),
   );
 }

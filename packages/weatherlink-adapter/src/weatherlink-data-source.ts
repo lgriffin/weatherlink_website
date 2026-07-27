@@ -11,8 +11,10 @@ import { stationId, sensorId, observationId } from '@weather/domain';
 import type { Logger } from '@weather/observability';
 import { WeatherLinkClient } from './client.js';
 import { IssConditionsSchema, BarometerConditionsSchema } from './schemas/current.js';
+import { HistoricIssConditionsSchema } from './schemas/historic.js';
 import {
   mapIssDataToMeasurements,
+  mapHistoricIssDataToMeasurements,
   mapBarometerDataToMeasurements,
   mergeMeasurementMaps,
 } from './mapper.js';
@@ -99,13 +101,13 @@ export class WeatherLinkDataSource implements WeatherDataSource {
         let ts = now;
 
         if (ISS_SENSOR_TYPES.includes(sensor.sensor_type)) {
-          const parsed = IssConditionsSchema.safeParse(rawData);
+          const parsed = HistoricIssConditionsSchema.safeParse(rawData);
           if (!parsed.success) {
             this.logger.warn({ errors: parsed.error.issues }, 'Failed to parse historic ISS data');
             continue;
           }
           ts = new Date((parsed.data.ts ?? Math.floor(now.getTime() / 1000)) * 1000);
-          measurements = mapIssDataToMeasurements(parsed.data, ts);
+          measurements = mapHistoricIssDataToMeasurements(parsed.data, ts);
         } else if (sensor.sensor_type === BAROMETER_SENSOR_TYPE) {
           const parsed = BarometerConditionsSchema.safeParse(rawData);
           if (!parsed.success) {
