@@ -1,5 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
+import { SegmentedControl } from '../components/SegmentedControl';
+import { getLabel } from '../config/measurements';
 
 export const Route = createFileRoute('/downloads')({
   component: DownloadsPage,
@@ -9,25 +11,25 @@ const FORMATS = [
   { key: 'csv', label: 'CSV', description: 'Tabular data for spreadsheets' },
   { key: 'json', label: 'JSON', description: 'Structured data for APIs' },
   { key: 'svg', label: 'SVG', description: 'Vector chart image' },
-] as const;
+];
 
 const METRIC_OPTIONS = [
-  { key: 'temperature.outdoor', label: 'Temperature' },
-  { key: 'humidity.outdoor', label: 'Humidity' },
-  { key: 'pressure.seaLevel', label: 'Pressure' },
-  { key: 'wind.speed', label: 'Wind Speed' },
-  { key: 'wind.gust', label: 'Wind Gust' },
-  { key: 'rain.daily', label: 'Daily Rain' },
-  { key: 'rain.rate', label: 'Rain Rate' },
-  { key: 'solar.radiation', label: 'Solar Radiation' },
-  { key: 'uv.index', label: 'UV Index' },
+  'temperature.outdoor',
+  'humidity.outdoor',
+  'pressure.seaLevel',
+  'wind.speed',
+  'wind.gust',
+  'rain.daily',
+  'rain.rate',
+  'solar.radiation',
+  'uv.index',
 ];
 
 const PRESETS = [
-  { label: 'Last 24h', hours: 24 },
-  { label: 'Last 7 days', hours: 168 },
-  { label: 'Last 30 days', hours: 720 },
-] as const;
+  { key: '24', label: 'Last 24h', hours: 24 },
+  { key: '168', label: 'Last 7 days', hours: 168 },
+  { key: '720', label: 'Last 30 days', hours: 720 },
+];
 
 function DownloadsPage() {
   const [format, setFormat] = useState('csv');
@@ -75,85 +77,46 @@ function DownloadsPage() {
 
   return (
     <div>
-      <h2 style={{ marginBottom: '16px' }}>Downloads</h2>
+      <h2 className="page-title">Downloads</h2>
 
-      <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-        <div className="measurement-card" style={{ flex: '1', minWidth: '300px' }}>
+      <div className="measurement-card download-form">
+        <div className="download-form__section">
           <div className="measurement-card__label">Format</div>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            {FORMATS.map((f) => (
-              <button
-                key={f.key}
-                onClick={() => setFormat(f.key)}
-                style={{
-                  padding: '10px 16px',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius)',
-                  background: format === f.key ? 'var(--color-primary)' : 'var(--color-surface)',
-                  color: format === f.key ? '#fff' : 'var(--color-text)',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <div style={{ fontWeight: 600 }}>{f.label}</div>
-                <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>{f.description}</div>
-              </button>
-            ))}
-          </div>
+          <SegmentedControl options={FORMATS} value={format} onChange={setFormat} />
+        </div>
 
+        <div className="download-form__section">
           <div className="measurement-card__label">Time Range</div>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-            {PRESETS.map((p) => (
-              <button
-                key={p.label}
-                onClick={() => setHoursBack(p.hours)}
-                style={{
-                  padding: '8px 16px',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius)',
-                  background: hoursBack === p.hours ? 'var(--color-primary)' : 'var(--color-surface)',
-                  color: hoursBack === p.hours ? '#fff' : 'var(--color-text)',
-                  cursor: 'pointer',
-                }}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            options={PRESETS}
+            value={String(hoursBack)}
+            onChange={(k) => setHoursBack(Number(k))}
+          />
+        </div>
 
+        <div className="download-form__section">
           <div className="measurement-card__label">Metrics</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '20px' }}>
-            {METRIC_OPTIONS.map((m) => (
-              <label key={m.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+          <div className="download-form__metrics">
+            {METRIC_OPTIONS.map((key) => (
+              <label key={key} className="metric-chip">
                 <input
                   type="checkbox"
-                  checked={selectedMetrics.includes(m.key)}
-                  onChange={() => toggleMetric(m.key)}
+                  checked={selectedMetrics.includes(key)}
+                  onChange={() => toggleMetric(key)}
                 />
-                {m.label}
+                {getLabel(key)}
               </label>
             ))}
           </div>
-
-          <button
-            onClick={handleExport}
-            disabled={isDownloading || selectedMetrics.length === 0}
-            style={{
-              padding: '12px 24px',
-              background: 'var(--color-primary)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 'var(--radius)',
-              cursor: isDownloading || selectedMetrics.length === 0 ? 'not-allowed' : 'pointer',
-              opacity: isDownloading || selectedMetrics.length === 0 ? 0.5 : 1,
-              fontWeight: 600,
-              fontSize: '0.875rem',
-              width: '100%',
-            }}
-          >
-            {isDownloading ? 'Downloading...' : `Download ${format.toUpperCase()}`}
-          </button>
         </div>
+
+        <button
+          className="download-button"
+          onClick={handleExport}
+          disabled={isDownloading || selectedMetrics.length === 0}
+        >
+          {isDownloading ? 'Downloading...' : `Download ${format.toUpperCase()}`}
+        </button>
       </div>
     </div>
   );

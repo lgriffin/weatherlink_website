@@ -26,6 +26,7 @@ export function registerRecordsRoutes(app: FastifyInstance, deps: RecordsRouteDe
         recordType: r.recordType,
         value: r.value,
         date: r.date,
+        ...(r.description ? { description: r.description } : {}),
       })),
     });
   });

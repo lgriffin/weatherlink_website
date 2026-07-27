@@ -71,6 +71,7 @@ export class DrizzleRecordRepository implements RecordRepository {
       recordType: row.recordType as RecordType,
       value: row.value,
       date: row.date,
+      description: row.description ?? undefined,
     };
   }
 
@@ -84,6 +85,7 @@ export class DrizzleRecordRepository implements RecordRepository {
       recordType: record.recordType,
       value: record.value,
       date: record.date,
+      description: record.description ?? null,
     };
   }
 }

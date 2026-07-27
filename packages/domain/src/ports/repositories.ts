@@ -29,6 +29,7 @@ export interface ObservationRepository {
     from: Date,
     to: Date,
   ): Promise<Observation[]>;
+  findDistinctDatesByStation(stationId: StationId): Promise<string[]>;
   save(observation: Observation): Promise<void>;
   saveMany(observations: Observation[]): Promise<void>;
   deleteOlderThan(cutoff: Date): Promise<number>;
@@ -57,6 +58,7 @@ export interface DailySummaryRepository {
     monthDay: string,
     measurementName: MeasurementName,
   ): Promise<DailySummary[]>;
+  findDistinctDatesByStation(stationId: StationId): Promise<string[]>;
   save(summary: DailySummary): Promise<void>;
   saveMany(summaries: DailySummary[]): Promise<void>;
   deleteOlderThan(cutoff: string): Promise<number>;

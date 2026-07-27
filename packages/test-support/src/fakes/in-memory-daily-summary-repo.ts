@@ -30,6 +30,16 @@ export class InMemoryDailySummaryRepository implements DailySummaryRepository {
     );
   }
 
+  async findDistinctDatesByStation(stationId: StationId): Promise<string[]> {
+    const dates = new Set<string>();
+    for (const s of this.summaries) {
+      if (s.stationId === stationId) {
+        dates.add(s.date);
+      }
+    }
+    return Array.from(dates).sort();
+  }
+
   async save(summary: DailySummary): Promise<void> {
     const idx = this.summaries.findIndex(
       (s) =>

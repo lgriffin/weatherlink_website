@@ -1,5 +1,6 @@
 import type { Measurement, MeasurementName } from '@weather/domain';
 import type { IssConditions, BarometerConditions } from './schemas/current.js';
+import type { HistoricIssConditions } from './schemas/historic.js';
 import { fahrenheitToCelsius, mphToMs, inHgToHpa, inchesToMm } from './conversions.js';
 import { MEASUREMENT_UNITS } from '@weather/domain';
 
@@ -52,6 +53,35 @@ export function mapIssDataToMeasurements(
 
   addMeasurement(map, 'solar.radiation', data.solar_rad, null, timestamp);
   addMeasurement(map, 'uv.index', data.uv_index, null, timestamp);
+
+  return map;
+}
+
+export function mapHistoricIssDataToMeasurements(
+  data: HistoricIssConditions,
+  timestamp: Date,
+): Map<string, Measurement> {
+  const map = new Map<string, Measurement>();
+
+  addMeasurement(map, 'temperature.outdoor', data.temp_avg, fahrenheitToCelsius, timestamp);
+  addMeasurement(map, 'temperature.dewPoint', data.dew_point_last, fahrenheitToCelsius, timestamp);
+  addMeasurement(map, 'temperature.wetBulb', data.wet_bulb_last, fahrenheitToCelsius, timestamp);
+  addMeasurement(map, 'temperature.heatIndex', data.heat_index_last, fahrenheitToCelsius, timestamp);
+  addMeasurement(map, 'temperature.windChill', data.wind_chill_last, fahrenheitToCelsius, timestamp);
+  addMeasurement(map, 'temperature.thwIndex', data.thw_index_last ?? data.thw_index_hi, fahrenheitToCelsius, timestamp);
+  addMeasurement(map, 'temperature.thswIndex', data.thsw_index_last ?? data.thsw_index_hi, fahrenheitToCelsius, timestamp);
+
+  addMeasurement(map, 'humidity.outdoor', data.hum_last, null, timestamp);
+
+  addMeasurement(map, 'wind.speed', data.wind_speed_avg, mphToMs, timestamp);
+  addMeasurement(map, 'wind.gust', data.wind_speed_hi, mphToMs, timestamp);
+  addMeasurement(map, 'wind.direction', data.wind_dir_of_prevail, null, timestamp);
+
+  addMeasurement(map, 'rain.rate', data.rain_rate_hi_mm ?? data.rain_rate_hi_in, data.rain_rate_hi_mm != null ? null : inchesToMm, timestamp);
+  addMeasurement(map, 'rain.daily', data.rainfall_mm ?? data.rainfall_in, data.rainfall_mm != null ? null : inchesToMm, timestamp);
+
+  addMeasurement(map, 'solar.radiation', data.solar_rad_avg, null, timestamp);
+  addMeasurement(map, 'uv.index', data.uv_index_avg, null, timestamp);
 
   return map;
 }

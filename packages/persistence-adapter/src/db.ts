@@ -18,6 +18,7 @@ export async function createDatabase(filePath: string) {
   const absolutePath = resolveDbPath(filePath);
   const client = createClient({ url: `file:${absolutePath}` });
   await client.execute('PRAGMA journal_mode = WAL');
+  await client.execute('PRAGMA busy_timeout = 5000');
   await client.execute('PRAGMA foreign_keys = ON');
   const db = drizzle(client, { schema });
   return { db, client };

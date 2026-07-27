@@ -11,6 +11,7 @@ export const records = sqliteTable('records', {
   recordType: text('record_type').notNull(),
   value: real('value').notNull(),
   date: text('date').notNull(),
+  description: text('description'),
 }, (table) => [
   index('idx_records_station_scope').on(table.stationId, table.scope),
   index('idx_records_station_measurement').on(table.stationId, table.measurementName),

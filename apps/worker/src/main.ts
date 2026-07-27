@@ -75,6 +75,32 @@ const cleanupOldData = new CleanupOldData(
   logger,
 );
 
+async function backfillSummaries(): Promise<void> {
+  const station = await stationRepo.findActive();
+  if (!station) return;
+
+  const obsDates = await observationRepo.findDistinctDatesByStation(station.id);
+  const summaryDates = new Set(await dailySummaryRepo.findDistinctDatesByStation(station.id));
+
+  const today = clock.now().toISOString().substring(0, 10);
+  const missingDates = obsDates.filter((d) => d < today && !summaryDates.has(d));
+
+  if (missingDates.length === 0) return;
+
+  logger.info({ count: missingDates.length }, 'Backfilling daily summaries for missing dates');
+
+  for (const date of missingDates) {
+    try {
+      await computeDailySummaries.execute(date);
+    } catch (error) {
+      logger.error({ err: error, date }, 'Failed to compute summary for date');
+    }
+  }
+
+  await computeRecords.execute();
+  logger.info('Summary backfill complete, records recomputed');
+}
+
 logger.info('Starting station discovery');
 try {
   await discoverStations.execute();
@@ -120,6 +146,12 @@ try {
   logger.error({ err: error }, 'Initial backfill failed');
 }
 
+try {
+  await backfillSummaries();
+} catch (error) {
+  logger.error({ err: error }, 'Summary backfill failed');
+}
+
 await poll();
 
 const pollIntervalMs = env.CURRENT_POLL_INTERVAL_MS;
@@ -131,6 +163,7 @@ logger.info({ historicSyncIntervalMs }, 'Starting historic sync loop');
 const historicTimer = setInterval(async () => {
   try {
     await syncHistoricData.execute();
+    await backfillSummaries();
   } catch (error) {
     logger.error({ err: error }, 'Historic sync failed');
   }
