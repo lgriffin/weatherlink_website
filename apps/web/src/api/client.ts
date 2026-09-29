@@ -7,6 +7,8 @@ import {
   type HistoryResponse,
   TimeSeriesResponseSchema,
   type TimeSeriesResponse,
+  YearComparisonResponseSchema,
+  type YearComparisonResponse,
 } from '@weather/contracts';
 
 export async function fetchCurrentConditions(): Promise<CurrentConditionsResponse> {
@@ -86,4 +88,12 @@ export async function fetchTimeSeries(
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   const json = await res.json();
   return TimeSeriesResponseSchema.parse(json);
+}
+
+export async function fetchYearComparison(metric: string, month: number): Promise<YearComparisonResponse> {
+  const params = new URLSearchParams({ metric, month: String(month) });
+  const res = await fetch(`/api/v1/compare?${params}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const json = await res.json();
+  return YearComparisonResponseSchema.parse(json);
 }

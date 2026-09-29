@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CompareRouteImport } from './routes/compare'
 import { Route as DownloadsRouteImport } from './routes/downloads'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as RecordsRouteImport } from './routes/records'
@@ -19,6 +20,11 @@ import { Route as TrendsRouteImport } from './routes/trends'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareRoute = CompareRouteImport.update({
+  id: '/compare',
+  path: '/compare',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DownloadsRoute = DownloadsRouteImport.update({
@@ -49,6 +55,7 @@ const TrendsRoute = TrendsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/compare': typeof CompareRoute
   '/downloads': typeof DownloadsRoute
   '/history': typeof HistoryRoute
   '/records': typeof RecordsRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/compare': typeof CompareRoute
   '/downloads': typeof DownloadsRoute
   '/history': typeof HistoryRoute
   '/records': typeof RecordsRoute
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/compare': typeof CompareRoute
   '/downloads': typeof DownloadsRoute
   '/history': typeof HistoryRoute
   '/records': typeof RecordsRoute
@@ -75,12 +84,26 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/downloads' | '/history' | '/records' | '/system' | '/trends'
+    | '/'
+    | '/compare'
+    | '/downloads'
+    | '/history'
+    | '/records'
+    | '/system'
+    | '/trends'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/downloads' | '/history' | '/records' | '/system' | '/trends'
+  to:
+    | '/'
+    | '/compare'
+    | '/downloads'
+    | '/history'
+    | '/records'
+    | '/system'
+    | '/trends'
   id:
     | '__root__'
     | '/'
+    | '/compare'
     | '/downloads'
     | '/history'
     | '/records'
@@ -90,6 +113,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CompareRoute: typeof CompareRoute
   DownloadsRoute: typeof DownloadsRoute
   HistoryRoute: typeof HistoryRoute
   RecordsRoute: typeof RecordsRoute
@@ -104,6 +128,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare': {
+      id: '/compare'
+      path: '/compare'
+      fullPath: '/compare'
+      preLoaderRoute: typeof CompareRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/downloads': {
@@ -146,6 +177,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CompareRoute: CompareRoute,
   DownloadsRoute: DownloadsRoute,
   HistoryRoute: HistoryRoute,
   RecordsRoute: RecordsRoute,
