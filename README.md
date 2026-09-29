@@ -95,6 +95,15 @@ The WeatherLink API returns at most 24 hours per request, so the harvest fetches
 
 Daily summaries use local calendar days in `APP_TIMEZONE`, and are built from archive intervals when a day has them (live polls are used only for days with no archive data). Daily rain is the sum of the interval rainfall, and daily highs and lows include each interval's own high and low.
 
+## Local forecast models
+
+The `ml/` folder (Python) trains your station's own forecast models from the archive: tonight's low and frost chance, tomorrow's high, rain in the next 6 and 24 hours, and the temperature this time tomorrow. Each model is scored against "a normal day for the date" and "the same as now" on the last 12 months. It also builds a fine-tuning set and a Modelfile for an Ollama model that writes the forecast in plain English. See [ml/README.md](ml/README.md).
+
+```bash
+pnpm ml:train       # train and score (after archive:harvest and archive:rebuild)
+pnpm ml:predict     # tonight's numbers and brief
+```
+
 ## Docker
 
 ```bash
