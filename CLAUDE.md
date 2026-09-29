@@ -51,6 +51,7 @@ pnpm dev                                  # Start API + web dev servers
 pnpm dev:worker                           # Start background poller
 pnpm archive:harvest [--from D] [--force] # Download full WeatherLink archive
 pnpm archive:rebuild                      # Re-derive everything from raw archive
+pnpm archive:gaps [--min-hours N] [--json] # List hardware outages
 pnpm test                                 # Run all tests
 pnpm typecheck                            # Type-check all packages
 ```

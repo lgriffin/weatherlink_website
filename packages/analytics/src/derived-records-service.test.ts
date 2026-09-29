@@ -74,6 +74,23 @@ describe('deriveDerivedRecords', () => {
     expect(dryStreak!.value).toBe(1);
   });
 
+  it('does not let a dry streak bridge missing days', () => {
+    const summaries = [
+      rainSummary('2026-07-01', 0), tempSummary('2026-07-01', 10, 20),
+      rainSummary('2026-07-02', 0), tempSummary('2026-07-02', 10, 20),
+      // 3-9 July missing: hardware outage
+      rainSummary('2026-07-10', 0), tempSummary('2026-07-10', 10, 20),
+      rainSummary('2026-07-11', 0), tempSummary('2026-07-11', 10, 20),
+      rainSummary('2026-07-12', 0), tempSummary('2026-07-12', 10, 20),
+    ];
+
+    const records = deriveDerivedRecords(sid, summaries);
+    const dryStreak = records.find((r) => r.description === 'Consecutive dry days');
+
+    expect(dryStreak!.value).toBe(3);
+    expect(dryStreak!.date).toBe('2026-07-12');
+  });
+
   it('computes consecutive rainy days streak', () => {
     const summaries = [
       rainSummary('2026-07-01', 2),

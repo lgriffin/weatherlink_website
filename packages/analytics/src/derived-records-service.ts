@@ -120,6 +120,15 @@ interface StreakResult {
   endDate: string;
 }
 
+function nextDate(date: string): string {
+  const t = Date.parse(`${date}T00:00:00Z`) + 86_400_000;
+  return new Date(t).toISOString().substring(0, 10);
+}
+
+/**
+ * Longest run of consecutive calendar days matching the predicate. A missing
+ * day (for example a hardware outage) ends the run rather than being skipped.
+ */
 function longestStreak(
   sorted: DailySummary[],
   predicate: (s: DailySummary) => boolean,
@@ -127,8 +136,14 @@ function longestStreak(
   let best: StreakResult | null = null;
   let currentLength = 0;
   let currentStart = '';
+  let previousDate = '';
 
   for (const s of sorted) {
+    if (currentLength > 0 && s.date !== nextDate(previousDate)) {
+      currentLength = 0;
+    }
+    previousDate = s.date;
+
     if (predicate(s)) {
       if (currentLength === 0) currentStart = s.date;
       currentLength++;

@@ -74,6 +74,7 @@ pnpm db:generate      # Generate Drizzle migrations
 pnpm db:migrate       # Run migrations
 pnpm archive:harvest  # Download the full WeatherLink archive (resumable)
 pnpm archive:rebuild  # Re-derive observations, summaries and records from the raw archive
+pnpm archive:gaps     # List outages (no usable outdoor data for 2+ hours)
 ```
 
 ## Full archive
@@ -88,6 +89,8 @@ pnpm archive:harvest --from 2024-01-01   # or fetch a specific range; days alrea
 ```
 
 The WeatherLink API returns at most 24 hours per request, so the harvest fetches one day at a time with a 2 second pause (about 15 minutes per year of history). It can be stopped and restarted; without `--force` it only fetches days that have not been synced.
+
+`pnpm archive:gaps` lists hardware outages: spans of more than 2 hours (`--min-hours`) with no usable outdoor reading, marked as either nothing logged or the ISS reporting nothing. Add `--json` for machine-readable output. Streak records (dry, wet, warm and frost runs) end at a missing day instead of bridging it.
 
 Daily summaries use local calendar days in `APP_TIMEZONE`, and are built from archive intervals when a day has them (live polls are used only for days with no archive data). Daily rain is the sum of the interval rainfall, and daily highs and lows include each interval's own high and low.
 

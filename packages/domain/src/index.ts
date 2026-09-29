@@ -13,6 +13,7 @@ export * from './types/record.js';
 export * from './types/alert.js';
 export * from './types/retention.js';
 export * from './types/archive-record.js';
+export * from './types/data-gap.js';
 export * from './ports/weather-data-source.js';
 export * from './ports/repositories.js';
 export * from './ports/clock.js';
