@@ -29,3 +29,12 @@ export function inchesToMm(inches: number): number {
 export function mmToInches(mm: number): number {
   return mm / 25.4;
 }
+
+export function milesToKm(miles: number): number {
+  return miles * 1.609344;
+}
+
+/** Fahrenheit degree days to Celsius degree days (a difference, so no offset). */
+export function fahrenheitDegreeDaysToCelsius(dd: number): number {
+  return dd * (5 / 9);
+}

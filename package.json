@@ -10,6 +10,8 @@
     "dev:api": "pnpm --filter @weather/api dev",
     "dev:web": "pnpm --filter @weather/web dev",
     "dev:worker": "pnpm --filter @weather/worker dev",
+    "archive:harvest": "pnpm --filter @weather/worker archive harvest",
+    "archive:rebuild": "pnpm --filter @weather/worker archive rebuild",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",

@@ -1,12 +1,11 @@
 import type {
-  WeatherDataSource,
   StationRepository,
   SensorRepository,
-  ObservationRepository,
   SyncWindowRepository,
   Clock,
 } from '@weather/domain';
 import type { Logger } from '@weather/observability';
+import type { ArchiveIngestor } from '../services/archive-ingestor.js';
 
 const ONE_DAY_SECONDS = 24 * 60 * 60;
 const DELAY_BETWEEN_REQUESTS_MS = 2000;
@@ -17,10 +16,9 @@ function delay(ms: number): Promise<void> {
 
 export class BackfillHistoricData {
   constructor(
-    private readonly weatherSource: WeatherDataSource,
+    private readonly ingestor: ArchiveIngestor,
     private readonly stationRepo: StationRepository,
     private readonly sensorRepo: SensorRepository,
-    private readonly observationRepo: ObservationRepository,
     private readonly syncWindowRepo: SyncWindowRepository,
     private readonly clock: Clock,
     private readonly logger: Logger,
@@ -73,25 +71,12 @@ export class BackfillHistoricData {
         const chunkEnd = Math.min(chunkStart + ONE_DAY_SECONDS, end);
 
         try {
-          const observations = await this.weatherSource.getHistoricConditions(
+          totalObservations += await this.ingestor.ingest(
             station.id,
-            chunkStart,
-            chunkEnd,
+            issSensor.id,
+            new Date(chunkStart * 1000),
+            new Date(chunkEnd * 1000),
           );
-
-          if (observations.length > 0) {
-            await this.observationRepo.saveMany(observations);
-            totalObservations += observations.length;
-          }
-
-          await this.syncWindowRepo.save({
-            stationId: station.id,
-            sensorId: issSensor.id,
-            startTimestamp: new Date(chunkStart * 1000),
-            endTimestamp: new Date(chunkEnd * 1000),
-            syncedAt: this.clock.now(),
-            observationCount: observations.length,
-          });
         } catch (error) {
           this.logger.error(
             { err: error, from: chunkStart, to: chunkEnd },

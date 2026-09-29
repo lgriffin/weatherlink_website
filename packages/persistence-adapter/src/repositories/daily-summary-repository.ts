@@ -104,6 +104,14 @@ export class DrizzleDailySummaryRepository implements DailySummaryRepository {
     return result.length;
   }
 
+  async deleteByStation(targetStationId: StationId): Promise<number> {
+    const result = await this.db
+      .delete(dailySummaries)
+      .where(eq(dailySummaries.stationId, String(targetStationId)))
+      .returning({ id: dailySummaries.id });
+    return result.length;
+  }
+
   private toDomain(row: typeof dailySummaries.$inferSelect): DailySummary {
     return {
       stationId: stationId(row.stationId),

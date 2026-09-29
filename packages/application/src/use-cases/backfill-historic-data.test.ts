@@ -7,11 +7,13 @@ import {
   InMemorySensorRepository,
   InMemoryObservationRepository,
   InMemorySyncWindowRepository,
+  InMemoryArchiveRecordRepository,
   aStation,
   aSensor,
   anObservation,
 } from '@weather/test-support';
 import { createLogger } from '@weather/observability';
+import { ArchiveIngestor } from '../services/archive-ingestor.js';
 
 const logger = createLogger({ level: 'silent', name: 'test' });
 
@@ -22,6 +24,8 @@ describe('BackfillHistoricData', () => {
   let observationRepo: InMemoryObservationRepository;
   let syncWindowRepo: InMemorySyncWindowRepository;
   let clock: FakeClock;
+  let archiveRepo: InMemoryArchiveRecordRepository;
+  let ingestor: ArchiveIngestor;
 
   beforeEach(() => {
     weatherSource = new FakeWeatherDataSource();
@@ -30,12 +34,14 @@ describe('BackfillHistoricData', () => {
     observationRepo = new InMemoryObservationRepository();
     syncWindowRepo = new InMemorySyncWindowRepository();
     clock = new FakeClock(new Date('2026-07-18T12:00:00Z'));
+    archiveRepo = new InMemoryArchiveRecordRepository();
+    ingestor = new ArchiveIngestor(weatherSource, archiveRepo, observationRepo, syncWindowRepo, clock);
   });
 
   it('skips when no active station', async () => {
     const useCase = new BackfillHistoricData(
-      weatherSource, stationRepo, sensorRepo,
-      observationRepo, syncWindowRepo, clock, logger, 3,
+      ingestor, stationRepo, sensorRepo,
+      syncWindowRepo, clock, logger, 3,
     );
     await useCase.execute();
     expect(observationRepo.getAll()).toHaveLength(0);
@@ -49,8 +55,8 @@ describe('BackfillHistoricData', () => {
     weatherSource.historicObservations = [obs];
 
     const useCase = new BackfillHistoricData(
-      weatherSource, stationRepo, sensorRepo,
-      observationRepo, syncWindowRepo, clock, logger, 2,
+      ingestor, stationRepo, sensorRepo,
+      syncWindowRepo, clock, logger, 2,
     );
     await useCase.execute();
 
@@ -76,8 +82,8 @@ describe('BackfillHistoricData', () => {
     });
 
     const useCase = new BackfillHistoricData(
-      weatherSource, stationRepo, sensorRepo,
-      observationRepo, syncWindowRepo, clock, logger, 2,
+      ingestor, stationRepo, sensorRepo,
+      syncWindowRepo, clock, logger, 2,
     );
     await useCase.execute();
 

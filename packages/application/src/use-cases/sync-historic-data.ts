@@ -1,21 +1,19 @@
 import type {
-  WeatherDataSource,
   StationRepository,
   SensorRepository,
-  ObservationRepository,
   SyncWindowRepository,
   Clock,
 } from '@weather/domain';
 import type { Logger } from '@weather/observability';
+import type { ArchiveIngestor } from '../services/archive-ingestor.js';
 
 const ONE_DAY_SECONDS = 24 * 60 * 60;
 
 export class SyncHistoricData {
   constructor(
-    private readonly weatherSource: WeatherDataSource,
+    private readonly ingestor: ArchiveIngestor,
     private readonly stationRepo: StationRepository,
     private readonly sensorRepo: SensorRepository,
-    private readonly observationRepo: ObservationRepository,
     private readonly syncWindowRepo: SyncWindowRepository,
     private readonly clock: Clock,
     private readonly logger: Logger,
@@ -68,31 +66,19 @@ export class SyncHistoricData {
       const chunkEnd = Math.min(chunkStart + ONE_DAY_SECONDS, end);
 
       try {
-        const observations = await this.weatherSource.getHistoricConditions(
-          stationId,
-          chunkStart,
-          chunkEnd,
-        );
-
-        if (observations.length > 0) {
-          await this.observationRepo.saveMany(observations);
-        }
-
-        await this.syncWindowRepo.save({
+        const observationCount = await this.ingestor.ingest(
           stationId,
           sensorId,
-          startTimestamp: new Date(chunkStart * 1000),
-          endTimestamp: new Date(chunkEnd * 1000),
-          syncedAt: this.clock.now(),
-          observationCount: observations.length,
-        });
+          new Date(chunkStart * 1000),
+          new Date(chunkEnd * 1000),
+        );
 
         this.logger.info(
           {
             stationId: String(stationId),
             from: new Date(chunkStart * 1000).toISOString(),
             to: new Date(chunkEnd * 1000).toISOString(),
-            observationCount: observations.length,
+            observationCount,
           },
           'Historic chunk synced',
         );

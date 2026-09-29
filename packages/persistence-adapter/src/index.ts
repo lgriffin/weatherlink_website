@@ -5,5 +5,6 @@ export { DrizzleObservationRepository } from './repositories/observation-reposit
 export { DrizzleSyncWindowRepository } from './repositories/sync-window-repository.js';
 export { DrizzleDailySummaryRepository } from './repositories/daily-summary-repository.js';
 export { DrizzleRecordRepository } from './repositories/record-repository.js';
+export { DrizzleArchiveRecordRepository } from './repositories/archive-record-repository.js';
 export { DrizzleTransactionManager } from './transaction-manager.js';
 export * as schema from './schema/index.js';
