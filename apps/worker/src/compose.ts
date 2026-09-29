@@ -24,6 +24,7 @@ import {
   ArchiveIngestor,
   HarvestFullArchive,
   RebuildFromArchive,
+  FindDataGaps,
 } from '@weather/application';
 import type { AlertRule } from '@weather/domain';
 
@@ -80,6 +81,8 @@ export async function composeWorker(name: string) {
     computeDailySummaries, computeRecords, clock, logger, env.APP_TIMEZONE,
   );
 
+  const findDataGaps = new FindDataGaps(stationRepo, sensorRepo, observationRepo, clock);
+
   const alertRules: AlertRule[] = JSON.parse(env.ALERT_RULES_JSON);
   const evaluateAlerts = new EvaluateAlerts(alertRules, logger);
 
@@ -109,6 +112,7 @@ export async function composeWorker(name: string) {
     computeRecords,
     harvestFullArchive,
     rebuildFromArchive,
+    findDataGaps,
     evaluateAlerts,
     cleanupOldData,
   };

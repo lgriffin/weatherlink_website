@@ -17,3 +17,4 @@ export { HarvestFullArchive, type HarvestOptions, type HarvestResult } from './u
 export { RebuildFromArchive, type RebuildResult } from './use-cases/rebuild-from-archive.js';
 export { ArchiveIngestor, type IngestOptions } from './services/archive-ingestor.js';
 export { localDateCandidates } from './services/summary-dates.js';
+export { FindDataGaps, type FindGapsOptions } from './use-cases/find-data-gaps.js';

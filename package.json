@@ -12,6 +12,7 @@
     "dev:worker": "pnpm --filter @weather/worker dev",
     "archive:harvest": "pnpm --filter @weather/worker archive harvest",
     "archive:rebuild": "pnpm --filter @weather/worker archive rebuild",
+    "archive:gaps": "pnpm --filter @weather/worker archive gaps",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
