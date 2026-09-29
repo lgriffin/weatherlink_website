@@ -29,6 +29,10 @@ apps/ → http-adapter → application → domain ← persistence-adapter ← we
 - `apps/web` — React + Vite + TanStack Router/Query
 - `apps/worker` — Background poller
 
+## ML
+
+- `ml/` — Python (not part of the pnpm workspace): LightGBM forecast models and the Ollama fine-tuning set, reading SQLite read-only. Every number comes from the numeric models; the language model only writes the words. Evaluate on the most recent 12 months against climatology and persistence, never on shuffled data. See `ml/README.md`.
+
 ## Key Conventions
 
 - Canonical units: Celsius, hPa, m/s, mm, W/m², degrees, percent
@@ -52,6 +56,7 @@ pnpm dev:worker                           # Start background poller
 pnpm archive:harvest [--from D] [--force] # Download full WeatherLink archive
 pnpm archive:rebuild                      # Re-derive everything from raw archive
 pnpm archive:gaps [--min-hours N] [--json] # List hardware outages
+pnpm ml:train / ml:predict / ml:test      # Python forecast models (see ml/README.md)
 pnpm test                                 # Run all tests
 pnpm typecheck                            # Type-check all packages
 ```
