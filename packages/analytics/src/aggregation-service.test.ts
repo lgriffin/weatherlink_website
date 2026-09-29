@@ -53,3 +53,48 @@ describe('computeDailySummaries', () => {
     expect(summaries).toHaveLength(0);
   });
 });
+
+describe('computeDailySummaries with archive intervals', () => {
+  const sid = stationId('station-1');
+
+  function interval(values: Record<string, number | null>) {
+    const measurements = new Map(
+      Object.entries(values).map(([name, value]) => [
+        name,
+        aMeasurement({ name: name as MeasurementName, value, unit: name.startsWith('rain') ? 'mm' : 'celsius' }),
+      ]),
+    );
+    return anObservation({ source: 'historic', measurements });
+  }
+
+  it('sums interval rainfall into the daily total', () => {
+    const summaries = computeDailySummaries(sid, '2026-07-17', [
+      interval({ 'rain.interval': 0.2 }),
+      interval({ 'rain.interval': 3.0 }),
+      interval({ 'rain.interval': 1.4 }),
+    ]);
+    const rain = summaries.find((s) => s.measurementName === 'rain.daily')!;
+    expect(rain.max).toBe(4.6);
+    expect(rain.min).toBeNull();
+    expect(rain.avg).toBeNull();
+    expect(rain.count).toBe(3);
+    expect(summaries.find((s) => s.measurementName === 'rain.interval')).toBeUndefined();
+  });
+
+  it('keeps a dry day as 0 mm, not missing', () => {
+    const summaries = computeDailySummaries(sid, '2026-07-17', [interval({ 'rain.interval': 0 })]);
+    expect(summaries.find((s) => s.measurementName === 'rain.daily')!.max).toBe(0);
+  });
+
+  it('uses interval highs and lows for the daily extremes', () => {
+    const summaries = computeDailySummaries(sid, '2026-07-17', [
+      interval({ 'temperature.outdoor': 10, 'temperature.outdoorHigh': 11.5, 'temperature.outdoorLow': 9.1 }),
+      interval({ 'temperature.outdoor': 14, 'temperature.outdoorHigh': 16.2, 'temperature.outdoorLow': 13 }),
+    ]);
+    const temp = summaries.find((s) => s.measurementName === 'temperature.outdoor')!;
+    expect(temp.max).toBe(16.2);
+    expect(temp.min).toBe(9.1);
+    expect(temp.avg).toBe(12);
+    expect(summaries.some((s) => s.measurementName === 'temperature.outdoorHigh')).toBe(false);
+  });
+});

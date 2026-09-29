@@ -1,79 +1,30 @@
-import { EnvSchema } from '@weather/contracts';
-import { SystemClock } from '@weather/domain';
-import { createLogger, PrometheusMetrics } from '@weather/observability';
-import { WeatherLinkClient, WeatherLinkDataSource } from '@weather/weatherlink-adapter';
-import {
-  createDatabase,
-  DrizzleStationRepository,
-  DrizzleSensorRepository,
-  DrizzleObservationRepository,
-  DrizzleSyncWindowRepository,
-  DrizzleDailySummaryRepository,
-  DrizzleRecordRepository,
-} from '@weather/persistence-adapter';
-import {
-  PollCurrentConditions,
-  DiscoverStations,
-  SyncHistoricData,
-  BackfillHistoricData,
-  ComputeDailySummaries,
-  ComputeRecords,
-  EvaluateAlerts,
-  CleanupOldData,
-} from '@weather/application';
-import type { AlertRule, Observation } from '@weather/domain';
+import type { Observation } from '@weather/domain';
+import { addDays, localDateOf } from '@weather/domain';
+import { localDateCandidates } from '@weather/application';
+import { composeWorker } from './compose.js';
 
-const env = EnvSchema.parse(process.env);
-
-const logger = createLogger({ level: env.LOG_LEVEL, name: 'worker' });
-const metrics = new PrometheusMetrics();
-const clock = new SystemClock();
-
-const { db, client } = await createDatabase(env.DATABASE_PATH);
-
-const weatherLinkClient = new WeatherLinkClient(
-  env.WEATHERLINK_API_KEY,
-  env.WEATHERLINK_API_SECRET,
-  env.WEATHERLINK_BASE_URL,
+const {
+  env,
   logger,
-);
-const weatherSource = new WeatherLinkDataSource(weatherLinkClient, logger);
-
-const stationRepo = new DrizzleStationRepository(db);
-const sensorRepo = new DrizzleSensorRepository(db);
-const observationRepo = new DrizzleObservationRepository(db);
-const syncWindowRepo = new DrizzleSyncWindowRepository(db);
-const dailySummaryRepo = new DrizzleDailySummaryRepository(db);
-const recordRepo = new DrizzleRecordRepository(db);
-
-const discoverStations = new DiscoverStations(weatherSource, stationRepo, sensorRepo, logger);
-const pollCurrentConditions = new PollCurrentConditions(
-  weatherSource, stationRepo, observationRepo, metrics, clock, logger,
-);
-const syncHistoricData = new SyncHistoricData(
-  weatherSource, stationRepo, sensorRepo, observationRepo, syncWindowRepo, clock, logger,
-);
-const backfillHistoricData = new BackfillHistoricData(
-  weatherSource, stationRepo, sensorRepo, observationRepo, syncWindowRepo, clock, logger,
-  env.HISTORIC_BACKFILL_DAYS,
-);
-const computeDailySummaries = new ComputeDailySummaries(
-  stationRepo, observationRepo, dailySummaryRepo, logger,
-);
-const computeRecords = new ComputeRecords(
-  stationRepo, dailySummaryRepo, recordRepo, logger,
-);
-
-const alertRules: AlertRule[] = JSON.parse(env.ALERT_RULES_JSON);
-const evaluateAlerts = new EvaluateAlerts(alertRules, logger);
-
-const cleanupOldData = new CleanupOldData(
+  clock,
+  client,
+  stationRepo,
   observationRepo,
   dailySummaryRepo,
-  { observationMaxAgeDays: env.RETENTION_OBSERVATION_MAX_AGE_DAYS, summaryMaxAgeDays: env.RETENTION_SUMMARY_MAX_AGE_DAYS },
-  clock,
-  logger,
-);
+  alertRules,
+  discoverStations,
+  pollCurrentConditions,
+  syncHistoricData,
+  backfillHistoricData,
+  computeDailySummaries,
+  computeRecords,
+  evaluateAlerts,
+  cleanupOldData,
+} = await composeWorker('worker');
+
+function localYesterday(): string {
+  return addDays(localDateOf(clock.now(), env.APP_TIMEZONE), -1);
+}
 
 async function backfillSummaries(): Promise<void> {
   const station = await stationRepo.findActive();
@@ -82,23 +33,26 @@ async function backfillSummaries(): Promise<void> {
   const obsDates = await observationRepo.findDistinctDatesByStation(station.id);
   const summaryDates = new Set(await dailySummaryRepo.findDistinctDatesByStation(station.id));
 
-  const today = clock.now().toISOString().substring(0, 10);
-  const missingDates = obsDates.filter((d) => d < today && !summaryDates.has(d));
+  const today = localDateOf(clock.now(), env.APP_TIMEZONE);
+  const missingDates = localDateCandidates(obsDates, today).filter((d) => !summaryDates.has(d));
 
   if (missingDates.length === 0) return;
 
-  logger.info({ count: missingDates.length }, 'Backfilling daily summaries for missing dates');
-
+  // Candidates include neighbouring days that may turn out to be empty, so only
+  // recompute records when a summary was actually written.
+  let datesSummarised = 0;
   for (const date of missingDates) {
     try {
-      await computeDailySummaries.execute(date);
+      if ((await computeDailySummaries.execute(date)) > 0) datesSummarised++;
     } catch (error) {
       logger.error({ err: error, date }, 'Failed to compute summary for date');
     }
   }
 
+  if (datesSummarised === 0) return;
+
   await computeRecords.execute();
-  logger.info('Summary backfill complete, records recomputed');
+  logger.info({ datesSummarised }, 'Summary backfill complete, records recomputed');
 }
 
 logger.info('Starting station discovery');
@@ -126,7 +80,7 @@ async function poll(): Promise<void> {
     }
   }
 
-  const yesterday = new Date(clock.now().getTime() - 86400000).toISOString().substring(0, 10);
+  const yesterday = localYesterday();
 
   if (lastSummaryDate !== yesterday) {
     try {

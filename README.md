@@ -72,7 +72,24 @@ pnpm typecheck        # Type-check all packages
 pnpm build            # Build all packages
 pnpm db:generate      # Generate Drizzle migrations
 pnpm db:migrate       # Run migrations
+pnpm archive:harvest  # Download the full WeatherLink archive (resumable)
+pnpm archive:rebuild  # Re-derive observations, summaries and records from the raw archive
 ```
+
+## Full archive
+
+The worker keeps every WeatherLink archive record exactly as the API returned it, in the `archive_records` table. Observations, daily summaries and records are all derived from it, so a mapping fix can be applied to the whole history without downloading again.
+
+```bash
+pnpm db:migrate
+pnpm archive:harvest --force          # one-time: re-download everything since the station was registered
+pnpm archive:rebuild                  # rebuild observations, summaries and records
+pnpm archive:harvest --from 2024-01-01   # or fetch a specific range; days already synced are skipped
+```
+
+The WeatherLink API returns at most 24 hours per request, so the harvest fetches one day at a time with a 2 second pause (about 15 minutes per year of history). It can be stopped and restarted; without `--force` it only fetches days that have not been synced.
+
+Daily summaries use local calendar days in `APP_TIMEZONE`, and are built from archive intervals when a day has them (live polls are used only for days with no archive data). Daily rain is the sum of the interval rainfall, and daily highs and lows include each interval's own high and low.
 
 ## Docker
 
@@ -95,6 +112,8 @@ Copy `.env.example` to `.env` and configure:
 | `CURRENT_POLL_INTERVAL_MS` | `60000` | Polling interval in milliseconds |
 | `APP_TIMEZONE` | `Europe/Dublin` | Station timezone for calendar calculations |
 | `LOG_LEVEL` | `info` | Pino log level |
+| `RETENTION_OBSERVATION_MAX_AGE_DAYS` | `0` | Delete observations older than this; `0` keeps them forever |
+| `RETENTION_SUMMARY_MAX_AGE_DAYS` | `0` | Delete daily summaries older than this; `0` keeps them forever |
 
 ## Key Design Decisions
 

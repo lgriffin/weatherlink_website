@@ -36,6 +36,8 @@ apps/ → http-adapter → application → domain ← persistence-adapter ← we
 - Branded types for IDs (StationId, SensorId, ObservationId)
 - Manual DI in composition roots (no DI container)
 - Observations store measurements as JSONB
+- Raw WeatherLink archive records are kept in `archive_records` (opaque payload to the domain); observations are derived from them
+- Daily summaries use local days in `APP_TIMEZONE` and archive intervals when present
 - WeatherLink field names never leak past the adapter
 
 ## Commands
@@ -47,6 +49,8 @@ pnpm db:generate                          # Generate Drizzle migrations
 pnpm db:migrate                           # Run migrations
 pnpm dev                                  # Start API + web dev servers
 pnpm dev:worker                           # Start background poller
+pnpm archive:harvest [--from D] [--force] # Download full WeatherLink archive
+pnpm archive:rebuild                      # Re-derive everything from raw archive
 pnpm test                                 # Run all tests
 pnpm typecheck                            # Type-check all packages
 ```

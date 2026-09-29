@@ -93,4 +93,21 @@ describe('CleanupOldData', () => {
 
     expect(observationRepo.getAll()).toHaveLength(0);
   });
+
+  it('keeps everything when the max ages are 0', async () => {
+    const keepForever = new CleanupOldData(
+      observationRepo,
+      dailySummaryRepo,
+      { observationMaxAgeDays: 0, summaryMaxAgeDays: 0 },
+      clock,
+      logger,
+    );
+    await observationRepo.save(anObservation({ timestamp: new Date('2010-01-01T00:00:00Z') }));
+    await dailySummaryRepo.save(aDailySummary({ date: '2010-01-01' }));
+
+    await keepForever.execute();
+
+    expect(observationRepo.getAll()).toHaveLength(1);
+    expect(dailySummaryRepo.getAll()).toHaveLength(1);
+  });
 });

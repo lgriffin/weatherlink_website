@@ -105,6 +105,26 @@ export class DrizzleObservationRepository implements ObservationRepository {
     return result.length;
   }
 
+  async deleteByStationAndTimeRange(
+    targetStationId: StationId,
+    from: Date,
+    to: Date,
+    source: ObservationSource,
+  ): Promise<number> {
+    const result = await this.db
+      .delete(observations)
+      .where(
+        and(
+          eq(observations.stationId, String(targetStationId)),
+          eq(observations.source, source),
+          gte(observations.timestamp, from),
+          lt(observations.timestamp, to),
+        ),
+      )
+      .returning({ id: observations.id });
+    return result.length;
+  }
+
   private toRow(observation: Observation) {
     const measurements: Record<string, StoredMeasurement> = {};
     for (const [key, m] of observation.measurements) {

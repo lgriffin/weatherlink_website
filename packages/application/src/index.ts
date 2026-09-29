@@ -13,3 +13,7 @@ export { GetTimeSeries } from './use-cases/get-time-series.js';
 export { ExportData, ExportTooLargeError } from './use-cases/export-data.js';
 export { EvaluateAlerts } from './use-cases/evaluate-alerts.js';
 export { CleanupOldData } from './use-cases/cleanup-old-data.js';
+export { HarvestFullArchive, type HarvestOptions, type HarvestResult } from './use-cases/harvest-full-archive.js';
+export { RebuildFromArchive, type RebuildResult } from './use-cases/rebuild-from-archive.js';
+export { ArchiveIngestor, type IngestOptions } from './services/archive-ingestor.js';
+export { localDateCandidates } from './services/summary-dates.js';

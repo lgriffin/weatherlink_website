@@ -1,7 +1,14 @@
 import type { Measurement, MeasurementName } from '@weather/domain';
 import type { IssConditions, BarometerConditions } from './schemas/current.js';
 import type { HistoricIssConditions } from './schemas/historic.js';
-import { fahrenheitToCelsius, mphToMs, inHgToHpa, inchesToMm } from './conversions.js';
+import {
+  fahrenheitToCelsius,
+  mphToMs,
+  inHgToHpa,
+  inchesToMm,
+  milesToKm,
+  fahrenheitDegreeDaysToCelsius,
+} from './conversions.js';
 import { MEASUREMENT_UNITS } from '@weather/domain';
 
 function addMeasurement(
@@ -57,6 +64,10 @@ export function mapIssDataToMeasurements(
   return map;
 }
 
+/**
+ * Maps one archive interval. Each interval carries its own average, high and low;
+ * rainfall is the amount that fell during the interval, not a running daily total.
+ */
 export function mapHistoricIssDataToMeasurements(
   data: HistoricIssConditions,
   timestamp: Date,
@@ -64,7 +75,11 @@ export function mapHistoricIssDataToMeasurements(
   const map = new Map<string, Measurement>();
 
   addMeasurement(map, 'temperature.outdoor', data.temp_avg, fahrenheitToCelsius, timestamp);
+  addMeasurement(map, 'temperature.outdoorHigh', data.temp_hi, fahrenheitToCelsius, timestamp);
+  addMeasurement(map, 'temperature.outdoorLow', data.temp_lo, fahrenheitToCelsius, timestamp);
   addMeasurement(map, 'temperature.dewPoint', data.dew_point_last, fahrenheitToCelsius, timestamp);
+  addMeasurement(map, 'temperature.dewPointHigh', data.dew_point_hi, fahrenheitToCelsius, timestamp);
+  addMeasurement(map, 'temperature.dewPointLow', data.dew_point_lo, fahrenheitToCelsius, timestamp);
   addMeasurement(map, 'temperature.wetBulb', data.wet_bulb_last, fahrenheitToCelsius, timestamp);
   addMeasurement(map, 'temperature.heatIndex', data.heat_index_last, fahrenheitToCelsius, timestamp);
   addMeasurement(map, 'temperature.windChill', data.wind_chill_last, fahrenheitToCelsius, timestamp);
@@ -72,16 +87,27 @@ export function mapHistoricIssDataToMeasurements(
   addMeasurement(map, 'temperature.thswIndex', data.thsw_index_last ?? data.thsw_index_hi, fahrenheitToCelsius, timestamp);
 
   addMeasurement(map, 'humidity.outdoor', data.hum_last, null, timestamp);
+  addMeasurement(map, 'humidity.outdoorHigh', data.hum_hi, null, timestamp);
+  addMeasurement(map, 'humidity.outdoorLow', data.hum_lo, null, timestamp);
 
   addMeasurement(map, 'wind.speed', data.wind_speed_avg, mphToMs, timestamp);
   addMeasurement(map, 'wind.gust', data.wind_speed_hi, mphToMs, timestamp);
   addMeasurement(map, 'wind.direction', data.wind_dir_of_prevail, null, timestamp);
+  addMeasurement(map, 'wind.gustDirection', data.wind_dir_of_hi, null, timestamp);
+  addMeasurement(map, 'wind.run', data.wind_run, milesToKm, timestamp);
 
   addMeasurement(map, 'rain.rate', data.rain_rate_hi_mm ?? data.rain_rate_hi_in, data.rain_rate_hi_mm != null ? null : inchesToMm, timestamp);
-  addMeasurement(map, 'rain.daily', data.rainfall_mm ?? data.rainfall_in, data.rainfall_mm != null ? null : inchesToMm, timestamp);
+  addMeasurement(map, 'rain.interval', data.rainfall_mm ?? data.rainfall_in, data.rainfall_mm != null ? null : inchesToMm, timestamp);
 
   addMeasurement(map, 'solar.radiation', data.solar_rad_avg, null, timestamp);
+  addMeasurement(map, 'solar.radiationHigh', data.solar_rad_hi, null, timestamp);
   addMeasurement(map, 'uv.index', data.uv_index_avg, null, timestamp);
+  addMeasurement(map, 'uv.indexHigh', data.uv_index_hi, null, timestamp);
+
+  addMeasurement(map, 'evapotranspiration', data.et, inchesToMm, timestamp);
+  addMeasurement(map, 'degreeDays.heating', data.deg_days_heat, fahrenheitDegreeDaysToCelsius, timestamp);
+  addMeasurement(map, 'degreeDays.cooling', data.deg_days_cool, fahrenheitDegreeDaysToCelsius, timestamp);
+  addMeasurement(map, 'station.issReception', data.iss_reception, null, timestamp);
 
   return map;
 }

@@ -1,4 +1,4 @@
-import type { ObservationRepository, Observation, StationId } from '@weather/domain';
+import type { ObservationRepository, Observation, ObservationSource, StationId } from '@weather/domain';
 
 export class InMemoryObservationRepository implements ObservationRepository {
   private observations: Observation[] = [];
@@ -44,6 +44,19 @@ export class InMemoryObservationRepository implements ObservationRepository {
   async deleteOlderThan(cutoff: Date): Promise<number> {
     const before = this.observations.length;
     this.observations = this.observations.filter((o) => o.timestamp >= cutoff);
+    return before - this.observations.length;
+  }
+
+  async deleteByStationAndTimeRange(
+    stationId: StationId,
+    from: Date,
+    to: Date,
+    source: ObservationSource,
+  ): Promise<number> {
+    const before = this.observations.length;
+    this.observations = this.observations.filter(
+      (o) => !(o.stationId === stationId && o.source === source && o.timestamp >= from && o.timestamp < to),
+    );
     return before - this.observations.length;
   }
 

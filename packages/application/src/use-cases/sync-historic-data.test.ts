@@ -7,11 +7,14 @@ import {
   InMemorySensorRepository,
   InMemoryObservationRepository,
   InMemorySyncWindowRepository,
+  InMemoryArchiveRecordRepository,
   aStation,
   aSensor,
   anObservation,
+  anArchiveRecord,
 } from '@weather/test-support';
 import { createLogger } from '@weather/observability';
+import { ArchiveIngestor } from '../services/archive-ingestor.js';
 
 const logger = createLogger({ level: 'silent', name: 'test' });
 
@@ -22,6 +25,8 @@ describe('SyncHistoricData', () => {
   let observationRepo: InMemoryObservationRepository;
   let syncWindowRepo: InMemorySyncWindowRepository;
   let clock: FakeClock;
+  let archiveRepo: InMemoryArchiveRecordRepository;
+  let ingestor: ArchiveIngestor;
   let useCase: SyncHistoricData;
 
   beforeEach(() => {
@@ -31,9 +36,11 @@ describe('SyncHistoricData', () => {
     observationRepo = new InMemoryObservationRepository();
     syncWindowRepo = new InMemorySyncWindowRepository();
     clock = new FakeClock(new Date('2026-07-18T12:00:00Z'));
+    archiveRepo = new InMemoryArchiveRecordRepository();
+    ingestor = new ArchiveIngestor(weatherSource, archiveRepo, observationRepo, syncWindowRepo, clock);
     useCase = new SyncHistoricData(
-      weatherSource, stationRepo, sensorRepo,
-      observationRepo, syncWindowRepo, clock, logger,
+      ingestor, stationRepo, sensorRepo,
+      syncWindowRepo, clock, logger,
     );
   });
 
@@ -82,5 +89,34 @@ describe('SyncHistoricData', () => {
 
     await useCase.execute();
     expect(observationRepo.getAll()).toHaveLength(0);
+  });
+});
+
+describe('SyncHistoricData raw archive', () => {
+  it('keeps the raw archive records it fetched', async () => {
+    const weatherSource = new FakeWeatherDataSource();
+    const stationRepo = new InMemoryStationRepository();
+    const sensorRepo = new InMemorySensorRepository();
+    const observationRepo = new InMemoryObservationRepository();
+    const syncWindowRepo = new InMemorySyncWindowRepository();
+    const archiveRepo = new InMemoryArchiveRecordRepository();
+    const clock = new FakeClock(new Date('2026-07-18T12:00:00Z'));
+    const station = aStation();
+    const sensor = aSensor();
+    await stationRepo.save(station);
+    await sensorRepo.save(sensor);
+    weatherSource.historicArchive = [
+      anArchiveRecord({ stationId: station.id, sensorId: sensor.id, timestamp: new Date('2026-07-18T06:00:00Z') }),
+    ];
+
+    const useCase = new SyncHistoricData(
+      new ArchiveIngestor(weatherSource, archiveRepo, observationRepo, syncWindowRepo, clock),
+      stationRepo, sensorRepo, syncWindowRepo, clock, logger,
+    );
+    await useCase.execute();
+
+    expect(archiveRepo.getAll()).toHaveLength(1);
+    expect(observationRepo.getAll()).toHaveLength(1);
+    expect(observationRepo.getAll()[0]!.source).toBe('historic');
   });
 });

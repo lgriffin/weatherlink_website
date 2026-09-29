@@ -6,6 +6,8 @@ import type { SyncWindow } from '../types/sync-window.js';
 import type { DailySummary } from '../types/daily-summary.js';
 import type { WeatherRecord, RecordScope } from '../types/record.js';
 import type { MeasurementName } from '../types/measurement.js';
+import type { ArchiveRecord } from '../types/archive-record.js';
+import type { ObservationSource } from '../types/observation.js';
 
 export interface StationRepository {
   findById(id: StationId): Promise<WeatherStation | null>;
@@ -33,6 +35,22 @@ export interface ObservationRepository {
   save(observation: Observation): Promise<void>;
   saveMany(observations: Observation[]): Promise<void>;
   deleteOlderThan(cutoff: Date): Promise<number>;
+  /** Deletes observations with timestamp in [from, to) from one source. */
+  deleteByStationAndTimeRange(
+    stationId: StationId,
+    from: Date,
+    to: Date,
+    source: ObservationSource,
+  ): Promise<number>;
+}
+
+export interface ArchiveRecordRepository {
+  /** Inserts or replaces records keyed by station, sensor and timestamp. */
+  saveMany(records: ArchiveRecord[]): Promise<void>;
+  /** Records with timestamp in [from, to). */
+  findByStationAndTimeRange(stationId: StationId, from: Date, to: Date): Promise<ArchiveRecord[]>;
+  findTimeBounds(stationId: StationId): Promise<{ earliest: Date; latest: Date } | null>;
+  countByStation(stationId: StationId): Promise<number>;
 }
 
 export interface SyncWindowRepository {
@@ -62,6 +80,7 @@ export interface DailySummaryRepository {
   save(summary: DailySummary): Promise<void>;
   saveMany(summaries: DailySummary[]): Promise<void>;
   deleteOlderThan(cutoff: string): Promise<number>;
+  deleteByStation(stationId: StationId): Promise<number>;
 }
 
 export interface RecordRepository {

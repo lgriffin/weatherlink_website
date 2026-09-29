@@ -9,19 +9,27 @@ export type CanonicalUnit =
   | 'percent'
   | 'uv_index'
   | 'μg/m3'
-  | 'volumetric';
+  | 'volumetric'
+  | 'km'
+  | 'degree_days';
 
 export const MEASUREMENT_UNITS: Record<string, CanonicalUnit> = {
   'temperature.outdoor': 'celsius',
+  'temperature.outdoorHigh': 'celsius',
+  'temperature.outdoorLow': 'celsius',
   'temperature.indoor': 'celsius',
   'temperature.apparent': 'celsius',
   'temperature.dewPoint': 'celsius',
+  'temperature.dewPointHigh': 'celsius',
+  'temperature.dewPointLow': 'celsius',
   'temperature.heatIndex': 'celsius',
   'temperature.windChill': 'celsius',
   'temperature.wetBulb': 'celsius',
   'temperature.thwIndex': 'celsius',
   'temperature.thswIndex': 'celsius',
   'humidity.outdoor': 'percent',
+  'humidity.outdoorHigh': 'percent',
+  'humidity.outdoorLow': 'percent',
   'humidity.indoor': 'percent',
   'pressure.seaLevel': 'hPa',
   'pressure.absolute': 'hPa',
@@ -29,10 +37,13 @@ export const MEASUREMENT_UNITS: Record<string, CanonicalUnit> = {
   'wind.speed': 'm/s',
   'wind.gust': 'm/s',
   'wind.direction': 'degrees',
+  'wind.gustDirection': 'degrees',
+  'wind.run': 'km',
   'wind.speedAvg1Min': 'm/s',
   'wind.speedAvg2Min': 'm/s',
   'wind.speedAvg10Min': 'm/s',
   'rain.rate': 'mm/h',
+  'rain.interval': 'mm',
   'rain.last15Min': 'mm',
   'rain.last60Min': 'mm',
   'rain.last24Hr': 'mm',
@@ -41,7 +52,9 @@ export const MEASUREMENT_UNITS: Record<string, CanonicalUnit> = {
   'rain.yearly': 'mm',
   'rain.stormTotal': 'mm',
   'solar.radiation': 'W/m2',
+  'solar.radiationHigh': 'W/m2',
   'uv.index': 'uv_index',
+  'uv.indexHigh': 'uv_index',
   'air.pm1': 'μg/m3',
   'air.pm2_5': 'μg/m3',
   'air.pm10': 'μg/m3',
@@ -49,4 +62,7 @@ export const MEASUREMENT_UNITS: Record<string, CanonicalUnit> = {
   'soil.moisture': 'volumetric',
   'leaf.wetness': 'volumetric',
   'evapotranspiration': 'mm',
+  'degreeDays.heating': 'degree_days',
+  'degreeDays.cooling': 'degree_days',
+  'station.issReception': 'percent',
 };

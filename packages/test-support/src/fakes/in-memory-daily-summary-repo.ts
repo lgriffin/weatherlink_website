@@ -66,6 +66,12 @@ export class InMemoryDailySummaryRepository implements DailySummaryRepository {
     return before - this.summaries.length;
   }
 
+  async deleteByStation(stationId: StationId): Promise<number> {
+    const before = this.summaries.length;
+    this.summaries = this.summaries.filter((s) => s.stationId !== stationId);
+    return before - this.summaries.length;
+  }
+
   getAll(): DailySummary[] {
     return [...this.summaries];
   }

@@ -6,6 +6,8 @@ import type {
   Observation,
   StationId,
   SensorCategory,
+  ArchiveRecord,
+  Measurement,
 } from '@weather/domain';
 import { stationId, sensorId, observationId } from '@weather/domain';
 import type { Logger } from '@weather/observability';
@@ -83,13 +85,22 @@ export class WeatherLinkDataSource implements WeatherDataSource {
     startTimestamp: number,
     endTimestamp: number,
   ): Promise<Observation[]> {
+    const records = await this.getHistoricArchive(targetStationId, startTimestamp, endTimestamp);
+    return this.mapArchiveRecords(records);
+  }
+
+  async getHistoricArchive(
+    targetStationId: StationId,
+    startTimestamp: number,
+    endTimestamp: number,
+  ): Promise<ArchiveRecord[]> {
     const response = await this.client.getHistoric(
       Number(targetStationId),
       startTimestamp,
       endTimestamp,
     );
-    const now = new Date();
-    const observations: Observation[] = [];
+    const fetchedAt = new Date();
+    const records: ArchiveRecord[] = [];
 
     for (const sensor of response.sensors) {
       if (!ISS_SENSOR_TYPES.includes(sensor.sensor_type) && sensor.sensor_type !== BAROMETER_SENSOR_TYPE) {
@@ -97,45 +108,69 @@ export class WeatherLinkDataSource implements WeatherDataSource {
       }
 
       for (const rawData of sensor.data) {
-        let measurements = new Map<string, import('@weather/domain').Measurement>();
-        let ts = now;
-
-        if (ISS_SENSOR_TYPES.includes(sensor.sensor_type)) {
-          const parsed = HistoricIssConditionsSchema.safeParse(rawData);
-          if (!parsed.success) {
-            this.logger.warn({ errors: parsed.error.issues }, 'Failed to parse historic ISS data');
-            continue;
-          }
-          ts = new Date((parsed.data.ts ?? Math.floor(now.getTime() / 1000)) * 1000);
-          measurements = mapHistoricIssDataToMeasurements(parsed.data, ts);
-        } else if (sensor.sensor_type === BAROMETER_SENSOR_TYPE) {
-          const parsed = BarometerConditionsSchema.safeParse(rawData);
-          if (!parsed.success) {
-            this.logger.warn({ errors: parsed.error.issues }, 'Failed to parse historic barometer data');
-            continue;
-          }
-          ts = new Date((parsed.data.ts ?? Math.floor(now.getTime() / 1000)) * 1000);
-          measurements = mapBarometerDataToMeasurements(parsed.data, ts);
+        const ts = rawData['ts'];
+        if (typeof ts !== 'number') {
+          this.logger.warn({ lsid: sensor.lsid }, 'Historic record without timestamp skipped');
+          continue;
         }
-
-        if (measurements.size > 0) {
-          const payloadHash = createHash('sha256')
-            .update(JSON.stringify(Object.fromEntries(measurements)))
-            .digest('hex')
-            .substring(0, 16);
-
-          observations.push({
-            id: observationId(randomUUID()),
-            stationId: targetStationId,
-            sensorId: sensorId(String(sensor.lsid)),
-            timestamp: ts,
-            receivedAt: now,
-            source: 'historic',
-            measurements,
-            rawPayloadHash: payloadHash,
-          });
-        }
+        const archInt = rawData['arch_int'];
+        records.push({
+          stationId: targetStationId,
+          sensorId: sensorId(String(sensor.lsid)),
+          sensorType: sensor.sensor_type,
+          timestamp: new Date(ts * 1000),
+          intervalMinutes: typeof archInt === 'number' ? Math.round(archInt / 60) : null,
+          payload: rawData,
+          fetchedAt,
+        });
       }
+    }
+
+    return records;
+  }
+
+  mapArchiveRecords(records: readonly ArchiveRecord[]): Observation[] {
+    const observations: Observation[] = [];
+
+    for (const record of records) {
+      let measurements = new Map<string, Measurement>();
+
+      if (ISS_SENSOR_TYPES.includes(record.sensorType)) {
+        const parsed = HistoricIssConditionsSchema.safeParse(record.payload);
+        if (!parsed.success) {
+          this.logger.warn({ errors: parsed.error.issues }, 'Failed to parse historic ISS data');
+          continue;
+        }
+        measurements = mapHistoricIssDataToMeasurements(parsed.data, record.timestamp);
+      } else if (record.sensorType === BAROMETER_SENSOR_TYPE) {
+        const parsed = BarometerConditionsSchema.safeParse(record.payload);
+        if (!parsed.success) {
+          this.logger.warn({ errors: parsed.error.issues }, 'Failed to parse historic barometer data');
+          continue;
+        }
+        measurements = mapBarometerDataToMeasurements(parsed.data, record.timestamp);
+      } else {
+        continue;
+      }
+
+      if (measurements.size === 0) continue;
+
+      const payloadHash = createHash('sha256')
+        .update(JSON.stringify(record.payload))
+        .digest('hex')
+        .substring(0, 16);
+
+      observations.push({
+        // Deterministic so that re-syncing the same interval never duplicates it
+        id: observationId(`archive:${String(record.stationId)}:${String(record.sensorId)}:${record.timestamp.getTime() / 1000}`),
+        stationId: record.stationId,
+        sensorId: record.sensorId,
+        timestamp: record.timestamp,
+        receivedAt: record.fetchedAt,
+        source: 'historic',
+        measurements,
+        rawPayloadHash: payloadHash,
+      });
     }
 
     return observations;
@@ -146,8 +181,8 @@ export class WeatherLinkDataSource implements WeatherDataSource {
     const now = new Date();
     const observations: Observation[] = [];
 
-    let issMeasurements = new Map<string, import('@weather/domain').Measurement>();
-    let barometerMeasurements = new Map<string, import('@weather/domain').Measurement>();
+    let issMeasurements = new Map<string, Measurement>();
+    let barometerMeasurements = new Map<string, Measurement>();
     let issTimestamp = now;
     let issSensorId = '';
 
