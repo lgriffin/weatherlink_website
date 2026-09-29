@@ -22,12 +22,14 @@ import {
   GetHistory,
   GetTimeSeries,
   ExportData,
+  GetYearComparison,
 } from '@weather/application';
 import {
   registerStationRoutes,
   registerCurrentRoutes,
   registerRecordsRoutes,
   registerHistoryRoutes,
+  registerCompareRoutes,
   registerSeriesRoutes,
   registerExportsRoutes,
   registerHealthRoutes,
@@ -84,6 +86,7 @@ const getRecords = new GetRecords(stationRepo, recordRepo);
 const getHistory = new GetHistory(stationRepo, dailySummaryRepo);
 const getTimeSeries = new GetTimeSeries(stationRepo, observationRepo, dailySummaryRepo);
 const exportData = new ExportData(stationRepo, observationRepo);
+const getYearComparison = new GetYearComparison(stationRepo, dailySummaryRepo, clock, env.APP_TIMEZONE);
 
 const app = Fastify({ logger: false });
 
@@ -95,6 +98,7 @@ registerStationRoutes(app, { stationRepo });
 registerCurrentRoutes(app, { getCurrentDashboard });
 registerRecordsRoutes(app, { getRecords });
 registerHistoryRoutes(app, { getHistory });
+registerCompareRoutes(app, { getYearComparison });
 registerSeriesRoutes(app, { getTimeSeries });
 registerExportsRoutes(app, { exportData });
 registerHealthRoutes(app, { healthChecker });

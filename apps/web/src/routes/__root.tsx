@@ -24,6 +24,9 @@ function RootLayout() {
         <Link to="/history" activeProps={{ 'data-status': 'active' } as Record<string, string>}>
           History
         </Link>
+        <Link to="/compare" activeProps={{ 'data-status': 'active' } as Record<string, string>}>
+          Year vs Year
+        </Link>
         <Link to="/trends" activeProps={{ 'data-status': 'active' } as Record<string, string>}>
           Trends
         </Link>

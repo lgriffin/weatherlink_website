@@ -18,3 +18,9 @@ export { RebuildFromArchive, type RebuildResult } from './use-cases/rebuild-from
 export { ArchiveIngestor, type IngestOptions } from './services/archive-ingestor.js';
 export { localDateCandidates } from './services/summary-dates.js';
 export { FindDataGaps, type FindGapsOptions } from './use-cases/find-data-gaps.js';
+export {
+  GetYearComparison,
+  RUNNING_TOTAL_METRICS,
+  type RunningTotalMetric,
+  type YearComparison,
+} from './use-cases/get-year-comparison.js';
