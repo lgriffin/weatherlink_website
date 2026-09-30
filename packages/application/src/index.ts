@@ -25,3 +25,5 @@ export {
   type YearComparison,
 } from './use-cases/get-year-comparison.js';
 export { GetAnnualStats, type AnnualStats } from './use-cases/get-annual-stats.js';
+export { RecordIngestReport, INGEST_REPORTS_KEPT } from './use-cases/record-ingest-report.js';
+export { GetIngestOverview, type IngestOverview } from './use-cases/get-ingest-overview.js';

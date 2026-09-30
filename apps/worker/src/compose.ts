@@ -11,6 +11,7 @@ import {
   DrizzleDailySummaryRepository,
   DrizzleRecordRepository,
   DrizzleArchiveRecordRepository,
+  DrizzleIngestReportRepository,
 } from '@weather/persistence-adapter';
 import {
   PollCurrentConditions,
@@ -25,6 +26,7 @@ import {
   HarvestFullArchive,
   RebuildFromArchive,
   FindDataGaps,
+  RecordIngestReport,
 } from '@weather/application';
 import type { AlertRule } from '@weather/domain';
 
@@ -82,6 +84,7 @@ export async function composeWorker(name: string) {
   );
 
   const findDataGaps = new FindDataGaps(stationRepo, sensorRepo, observationRepo, clock);
+  const recordIngestReport = new RecordIngestReport(new DrizzleIngestReportRepository(db), clock);
 
   const alertRules: AlertRule[] = JSON.parse(env.ALERT_RULES_JSON);
   const evaluateAlerts = new EvaluateAlerts(alertRules, logger);
@@ -113,6 +116,7 @@ export async function composeWorker(name: string) {
     harvestFullArchive,
     rebuildFromArchive,
     findDataGaps,
+    recordIngestReport,
     evaluateAlerts,
     cleanupOldData,
   };

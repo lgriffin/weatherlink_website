@@ -1,52 +1,55 @@
+# The whole site on one machine (a NAS, a mini PC):
+#
+#   cp .env.example .env        # fill in the WeatherLink key, secret and INGEST_TOKEN
+#   docker compose up -d --build
+#   docker compose run --rm worker archive harvest    # first time: download the full history
+#   docker compose run --rm worker archive rebuild
+#
+# The site and API are then on http://<this machine>:1456. The worker keeps
+# current conditions and the archive up to date from then on.
+
+x-common: &common
+  build:
+    context: .
+    target: production
+  image: weatherlink-website:latest
+  env_file:
+    - path: .env
+      required: false
+  volumes:
+    - weather-data:/data
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+
 services:
   api:
-    build:
-      context: .
-      target: production
+    <<: *common
     ports:
       - '1456:1456'
     environment:
-      PORT: '1456'
       NODE_ENV: production
-      APP_TIMEZONE: Europe/Dublin
-      LOG_LEVEL: info
-      WEATHERLINK_API_KEY: ${WEATHERLINK_API_KEY}
-      WEATHERLINK_API_SECRET: ${WEATHERLINK_API_SECRET}
-      WEATHERLINK_BASE_URL: https://api.weatherlink.com/v2
+      PORT: '1456'
       DATABASE_PATH: /data/weather.db
-      CURRENT_POLL_INTERVAL_MS: '60000'
-      METRICS_ENABLED: 'true'
-    volumes:
-      - weather-data:/data
-    restart: unless-stopped
-    read_only: true
-    tmpfs:
-      - /tmp
-    security_opt:
-      - no-new-privileges:true
+      WEB_DIST_DIR: /app/apps/web/dist
 
   worker:
-    build:
-      context: .
-      target: production
-    command: ['node', 'apps/worker/dist/main.js']
+    <<: *common
+    # "archive <command>" runs one archive job instead of the poller, e.g.
+    # docker compose run --rm worker archive harvest
+    working_dir: /app/apps/worker
+    entrypoint: ['/bin/sh', '-c', 'if [ "$$1" = archive ]; then shift; exec node --import tsx src/archive.ts "$$@"; else exec node --import tsx src/main.ts "$$@"; fi', '--']
+    command: []
     environment:
       NODE_ENV: production
-      APP_TIMEZONE: Europe/Dublin
-      LOG_LEVEL: info
-      WEATHERLINK_API_KEY: ${WEATHERLINK_API_KEY}
-      WEATHERLINK_API_SECRET: ${WEATHERLINK_API_SECRET}
-      WEATHERLINK_BASE_URL: https://api.weatherlink.com/v2
       DATABASE_PATH: /data/weather.db
-      CURRENT_POLL_INTERVAL_MS: '60000'
-    volumes:
-      - weather-data:/data
-    restart: unless-stopped
-    read_only: true
-    tmpfs:
-      - /tmp
-    security_opt:
-      - no-new-privileges:true
+    # The API applies migrations on start, so let it go first.
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   weather-data:

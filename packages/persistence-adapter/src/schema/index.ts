@@ -5,3 +5,4 @@ export { syncWindows } from './sync-windows.js';
 export { dailySummaries } from './daily-summaries.js';
 export { records } from './records.js';
 export { archiveRecords } from './archive-records.js';
+export { ingestReports } from './ingest-reports.js';

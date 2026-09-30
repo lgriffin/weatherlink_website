@@ -36,6 +36,9 @@ function RootLayout() {
         <Link to="/trends" activeProps={{ 'data-status': 'active' } as Record<string, string>}>
           Trends
         </Link>
+        <Link to="/outputs" activeProps={{ 'data-status': 'active' } as Record<string, string>}>
+          Outputs
+        </Link>
         <Link to="/downloads" activeProps={{ 'data-status': 'active' } as Record<string, string>}>
           Downloads
         </Link>

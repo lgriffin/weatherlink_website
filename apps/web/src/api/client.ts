@@ -11,6 +11,9 @@ import {
   type YearComparisonResponse,
   AnnualStatsResponseSchema,
   type AnnualStatsResponse,
+  IngestOverviewResponseSchema,
+  type IngestOverviewResponse,
+  type IngestKindValue,
 } from '@weather/contracts';
 import { IS_STATIC, dataUrl, nearestSnapshotHours } from '../config/site';
 
@@ -121,4 +124,25 @@ export function fetchSnapshotInfo(): Promise<SnapshotInfo> {
   snapshotInfo ??= getJson('', 'meta.json').then((json) => json as SnapshotInfo);
   snapshotInfo.catch(() => { snapshotInfo = null; });
   return snapshotInfo;
+}
+
+export async function fetchIngestOverview(): Promise<IngestOverviewResponse> {
+  return IngestOverviewResponseSchema.parse(await getJson('/api/v1/ingest', 'ingest.json'));
+}
+
+/** Push one output file to the server. Throws with the server's message when it refuses. */
+export async function uploadIngest(kind: IngestKindValue, body: unknown, token: string, source: string): Promise<void> {
+  const res = await fetch(`/api/v1/ingest/${kind}`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${token}`,
+      ...(source ? { 'x-source': source } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null) as { error?: { message?: string } } | null;
+    throw new Error(detail?.error?.message ?? `Upload failed (${res.status})`);
+  }
 }

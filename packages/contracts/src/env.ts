@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+/** An empty line in .env (`INGEST_TOKEN=`) means "not set". */
+const optional = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((v) => (v === '' ? undefined : v), schema.optional());
+
 export const EnvSchema = z.object({
   WEATHERLINK_API_KEY: z.string().min(1),
   WEATHERLINK_API_SECRET: z.string().min(1),
@@ -21,6 +25,12 @@ export const EnvSchema = z.object({
   RETENTION_SUMMARY_MAX_AGE_DAYS: z.coerce.number().int().min(0).default(0),
   CLEANUP_INTERVAL_MS: z.coerce.number().int().min(3600000).default(86400000),
   ALERT_RULES_JSON: z.string().default('[]'),
+  // Shared secret for POST /api/v1/ingest/:kind. Unset disables uploads.
+  INGEST_TOKEN: optional(z.string().min(16, 'INGEST_TOKEN must be at least 16 characters')),
+  // Name this machine shows as on the Outputs page (defaults to the hostname).
+  INGEST_SOURCE: optional(z.string().max(64)),
+  // Built web app to serve alongside the API (the container sets this).
+  WEB_DIST_DIR: optional(z.string()),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

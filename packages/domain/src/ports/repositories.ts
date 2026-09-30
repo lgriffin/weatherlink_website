@@ -8,6 +8,7 @@ import type { WeatherRecord, RecordScope } from '../types/record.js';
 import type { MeasurementName } from '../types/measurement.js';
 import type { ArchiveRecord } from '../types/archive-record.js';
 import type { ObservationSource } from '../types/observation.js';
+import type { IngestKind, IngestReport, NewIngestReport } from '../types/ingest-report.js';
 
 export interface StationRepository {
   findById(id: StationId): Promise<WeatherStation | null>;
@@ -92,6 +93,15 @@ export interface RecordRepository {
   save(record: WeatherRecord): Promise<void>;
   saveMany(records: WeatherRecord[]): Promise<void>;
   deleteByStation(stationId: StationId): Promise<void>;
+}
+
+export interface IngestReportRepository {
+  save(report: NewIngestReport): Promise<IngestReport>;
+  findLatest(kind: IngestKind): Promise<IngestReport | null>;
+  /** Newest first, without payloads' size mattering to the caller. */
+  findRecent(limit: number): Promise<IngestReport[]>;
+  /** Keep the newest `keep` reports of a kind; returns how many were removed. */
+  prune(kind: IngestKind, keep: number): Promise<number>;
 }
 
 export interface SensorCatalogRepository {}
