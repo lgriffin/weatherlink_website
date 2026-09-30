@@ -58,6 +58,8 @@ Dependency flow: `apps/ -> http-adapter -> application -> domain <- adapters`
 | `GET /api/v1/station` | Current station info |
 | `GET /api/v1/current` | Latest conditions with freshness state |
 | `GET /api/v1/compare?metric=rain.daily&month=9` | Year vs year: running totals, one month in every year, current and longest runs |
+| `GET /api/v1/ingest` | Latest forecast, model scores, outage list and harvest status pushed from other machines |
+| `POST /api/v1/ingest/:kind` | Upload one of those (`forecast`, `model-scores`, `outages`, `harvest`) as JSON with `Authorization: Bearer $INGEST_TOKEN` and an optional `X-Source` name |
 | `GET /api/v1/annual?years=3` | Warm, cold and wet day counts per month for the latest years (thresholds from 20 °C up to the record high, 5 °C down to the record low, 2 mm upwards) |
 | `GET /health/live` | Liveness probe (always 200) |
 | `GET /health/ready` | Readiness probe (503 if unhealthy) |
@@ -114,10 +116,14 @@ pnpm ml:predict     # tonight's numbers and brief
 ## Docker
 
 ```bash
-docker compose up     # Start PostgreSQL + API + worker
+cp .env.example .env                              # key, secret, INGEST_TOKEN
+docker compose up -d --build                      # site + API on :1456, worker polling
+docker compose run --rm worker archive harvest    # first time: full history
+docker compose run --rm worker archive rebuild
+docker compose run --rm worker archive gaps --save
 ```
 
-The Dockerfile uses a multi-stage build with a non-root user. The compose file runs PostgreSQL 17, the API server, and the worker as separate services.
+One image runs everything. The API applies database migrations when it starts and serves the web app on the same port, so `http://<host>:1456` is the whole site. The database lives in the `weather-data` volume (SQLite at `/data/weather.db`). The containers run as a non-root user with a read-only filesystem.
 
 ## Configuration
 
@@ -127,7 +133,10 @@ Copy `.env.example` to `.env` and configure:
 |---|---|---|
 | `WEATHERLINK_API_KEY` | — | WeatherLink v2 API key (required) |
 | `WEATHERLINK_API_SECRET` | — | WeatherLink v2 API secret (required) |
-| `DATABASE_URL` | `postgresql://weather:weather@localhost:5432/weather` | PostgreSQL connection string |
+| `DATABASE_PATH` | `./data/weather.db` | SQLite database file |
+| `INGEST_TOKEN` | — | Shared secret for uploads to the Outputs page (16+ characters); unset turns uploads off |
+| `INGEST_SOURCE` | hostname | Name this machine shows as on the Outputs page |
+| `WEB_DIST_DIR` | — | Built web app for the API to serve (the container sets it) |
 | `PORT` | `1456` | API server port |
 | `CURRENT_POLL_INTERVAL_MS` | `60000` | Polling interval in milliseconds |
 | `APP_TIMEZONE` | `Europe/Dublin` | Station timezone for calendar calculations |

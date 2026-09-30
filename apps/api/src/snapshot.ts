@@ -85,6 +85,7 @@ try {
   }
 
   await save('annual.json', await get('/api/v1/annual'));
+  await save('ingest.json', { ...(await get('/api/v1/ingest') as object), uploadsEnabled: false });
 
   for (const metric of RUNNING_TOTAL_METRICS) {
     for (let month = 1; month <= 12; month++) {

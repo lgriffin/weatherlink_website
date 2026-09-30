@@ -14,3 +14,4 @@ export * from './fakes/in-memory-daily-summary-repo.js';
 export * from './fakes/in-memory-record-repo.js';
 export * from './fakes/in-memory-archive-record-repo.js';
 export * from './fakes/fake-metrics.js';
+export * from './fakes/in-memory-ingest-report-repo.js';

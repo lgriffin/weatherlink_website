@@ -1,0 +1,10 @@
+node_modules
+**/node_modules
+**/dist
+data
+ml/.venv
+ml/out
+.git
+.env
+.env.*
+!.env.example
