@@ -130,12 +130,16 @@ pnpm ml:predict     # tonight's numbers and brief
 ```bash
 cp .env.example .env                              # key, secret, INGEST_TOKEN
 docker compose up -d --build                      # site + API on :1456, worker polling
-docker compose run --rm worker archive harvest    # first time: full history
+git clone -b weather-history --depth 1 https://github.com/lgriffin/weatherlink_website.git ../weather-history
+docker compose run --rm -v "$PWD/../weather-history:/history:ro" worker archive import --from /history
+docker compose run --rm worker archive harvest    # only the days since the branch was updated
 docker compose run --rm worker archive rebuild
 docker compose run --rm worker archive gaps --save
 ```
 
 One image runs everything. The API applies database migrations when it starts and serves the web app on the same port, so `http://<host>:1456` is the whole site. The database lives in the `weather-data` volume (SQLite at `/data/weather.db`). The containers run as a non-root user with a read-only filesystem.
+
+Step-by-step setup for the NAS, the Spark and a Windows PC, including cron jobs and sending outputs to the Outputs page, is in [docs/machine-guides.md](docs/machine-guides.md).
 
 ## Configuration
 
