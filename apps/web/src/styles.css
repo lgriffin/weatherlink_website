@@ -879,6 +879,96 @@ body {
   width: auto;
 }
 
+/* Annual stats */
+.annual-scroll {
+  overflow-x: auto;
+}
+
+.annual-totals td {
+  position: relative;
+  font-variant-numeric: tabular-nums;
+  min-width: 4.5rem;
+}
+
+.annual-sofar {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.annual-bar {
+  position: absolute;
+  right: var(--space-xs);
+  top: 20%;
+  height: 60%;
+  max-width: calc(100% - var(--space-xs) * 2);
+  border-radius: 3px;
+  opacity: 0.18;
+}
+
+.annual-bar__value {
+  position: relative;
+  font-weight: 600;
+}
+
+.annual-years {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.annual-grid {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 2px;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.annual-grid th {
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: 2px 0;
+}
+
+.annual-grid td {
+  text-align: center;
+  padding: 4px 0;
+  border-radius: 3px;
+}
+
+.annual-grid__label {
+  width: 3.9rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.annual-grid__total {
+  width: 2.6rem;
+  font-weight: 700;
+  text-align: right !important;
+  padding-right: 2px !important;
+}
+
+.annual-grid__coverage td,
+.annual-grid__coverage th {
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
+}
+
+.annual-grid__zero {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+.annual-grid__short {
+  color: var(--color-delayed) !important;
+  font-weight: 600;
+}
+
 .app-nav a {
   white-space: nowrap;
 }

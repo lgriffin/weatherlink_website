@@ -24,3 +24,4 @@ export {
   type RunningTotalMetric,
   type YearComparison,
 } from './use-cases/get-year-comparison.js';
+export { GetAnnualStats, type AnnualStats } from './use-cases/get-annual-stats.js';

@@ -16,3 +16,14 @@ export {
   type WeatherRun,
   type RunKind,
 } from './year-comparison.js';
+export {
+  annualThresholds,
+  WARM_FROM_C,
+  COLD_FROM_C,
+  WET_THRESHOLDS_MM,
+  type AnnualThresholds,
+  type ThresholdGroup,
+  type ThresholdGroupKey,
+  type ThresholdRow,
+  type YearCoverage,
+} from './annual-thresholds.js';

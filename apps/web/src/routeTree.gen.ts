@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AnnualRouteImport } from './routes/annual'
 import { Route as CompareRouteImport } from './routes/compare'
 import { Route as DownloadsRouteImport } from './routes/downloads'
 import { Route as HistoryRouteImport } from './routes/history'
@@ -20,6 +21,11 @@ import { Route as TrendsRouteImport } from './routes/trends'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnnualRoute = AnnualRouteImport.update({
+  id: '/annual',
+  path: '/annual',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompareRoute = CompareRouteImport.update({
@@ -55,6 +61,7 @@ const TrendsRoute = TrendsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/annual': typeof AnnualRoute
   '/compare': typeof CompareRoute
   '/downloads': typeof DownloadsRoute
   '/history': typeof HistoryRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/annual': typeof AnnualRoute
   '/compare': typeof CompareRoute
   '/downloads': typeof DownloadsRoute
   '/history': typeof HistoryRoute
@@ -74,6 +82,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/annual': typeof AnnualRoute
   '/compare': typeof CompareRoute
   '/downloads': typeof DownloadsRoute
   '/history': typeof HistoryRoute
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/annual'
     | '/compare'
     | '/downloads'
     | '/history'
@@ -94,6 +104,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/annual'
     | '/compare'
     | '/downloads'
     | '/history'
@@ -103,6 +114,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/annual'
     | '/compare'
     | '/downloads'
     | '/history'
@@ -113,6 +125,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AnnualRoute: typeof AnnualRoute
   CompareRoute: typeof CompareRoute
   DownloadsRoute: typeof DownloadsRoute
   HistoryRoute: typeof HistoryRoute
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/annual': {
+      id: '/annual'
+      path: '/annual'
+      fullPath: '/annual'
+      preLoaderRoute: typeof AnnualRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/compare': {
@@ -177,6 +197,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AnnualRoute: AnnualRoute,
   CompareRoute: CompareRoute,
   DownloadsRoute: DownloadsRoute,
   HistoryRoute: HistoryRoute,

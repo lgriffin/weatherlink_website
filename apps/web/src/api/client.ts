@@ -9,6 +9,8 @@ import {
   type TimeSeriesResponse,
   YearComparisonResponseSchema,
   type YearComparisonResponse,
+  AnnualStatsResponseSchema,
+  type AnnualStatsResponse,
 } from '@weather/contracts';
 import { IS_STATIC, dataUrl, nearestSnapshotHours } from '../config/site';
 
@@ -100,6 +102,10 @@ export async function fetchYearComparison(metric: string, month: number): Promis
   const params = new URLSearchParams({ metric, month: String(month) });
   const json = await getJson(`/api/v1/compare?${params}`, `compare/${metric}/${month}.json`);
   return YearComparisonResponseSchema.parse(json);
+}
+
+export async function fetchAnnualStats(): Promise<AnnualStatsResponse> {
+  return AnnualStatsResponseSchema.parse(await getJson('/api/v1/annual', 'annual.json'));
 }
 
 export interface SnapshotInfo {

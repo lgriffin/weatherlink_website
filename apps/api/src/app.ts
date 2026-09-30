@@ -23,6 +23,7 @@ import {
   GetTimeSeries,
   ExportData,
   GetYearComparison,
+  GetAnnualStats,
 } from '@weather/application';
 import {
   registerStationRoutes,
@@ -30,6 +31,7 @@ import {
   registerRecordsRoutes,
   registerHistoryRoutes,
   registerCompareRoutes,
+  registerAnnualRoutes,
   registerSeriesRoutes,
   registerExportsRoutes,
   registerHealthRoutes,
@@ -87,6 +89,7 @@ export async function buildApp(env: Env) {
   const getTimeSeries = new GetTimeSeries(stationRepo, observationRepo, dailySummaryRepo);
   const exportData = new ExportData(stationRepo, observationRepo);
   const getYearComparison = new GetYearComparison(stationRepo, dailySummaryRepo, clock, env.APP_TIMEZONE);
+  const getAnnualStats = new GetAnnualStats(stationRepo, dailySummaryRepo, clock, env.APP_TIMEZONE);
 
   const app = Fastify({ logger: false });
 
@@ -99,6 +102,7 @@ export async function buildApp(env: Env) {
   registerRecordsRoutes(app, { getRecords });
   registerHistoryRoutes(app, { getHistory });
   registerCompareRoutes(app, { getYearComparison });
+  registerAnnualRoutes(app, { getAnnualStats });
   registerSeriesRoutes(app, { getTimeSeries });
   registerExportsRoutes(app, { exportData });
   registerHealthRoutes(app, { healthChecker });
