@@ -84,6 +84,8 @@ try {
     await save(`history/${day}.json`, await get(`/api/v1/history?date=${day}`));
   }
 
+  await save('annual.json', await get('/api/v1/annual'));
+
   for (const metric of RUNNING_TOTAL_METRICS) {
     for (let month = 1; month <= 12; month++) {
       await save(`compare/${metric}/${month}.json`, await get(`/api/v1/compare?metric=${metric}&month=${month}`));

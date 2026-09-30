@@ -7,3 +7,4 @@ export * from './api/records.js';
 export * from './api/history.js';
 export * from './api/series.js';
 export * from './api/compare.js';
+export * from './api/annual.js';

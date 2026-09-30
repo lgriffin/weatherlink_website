@@ -58,6 +58,7 @@ Dependency flow: `apps/ -> http-adapter -> application -> domain <- adapters`
 | `GET /api/v1/station` | Current station info |
 | `GET /api/v1/current` | Latest conditions with freshness state |
 | `GET /api/v1/compare?metric=rain.daily&month=9` | Year vs year: running totals, one month in every year, current and longest runs |
+| `GET /api/v1/annual?years=3` | Warm, cold and wet day counts per month for the latest years (thresholds from 20 °C up to the record high, 5 °C down to the record low, 2 mm upwards) |
 | `GET /health/live` | Liveness probe (always 200) |
 | `GET /health/ready` | Readiness probe (503 if unhealthy) |
 | `GET /metrics` | Prometheus metrics |

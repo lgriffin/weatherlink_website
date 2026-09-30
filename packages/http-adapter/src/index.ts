@@ -3,6 +3,7 @@ export { registerCurrentRoutes } from './routes/current.js';
 export { registerRecordsRoutes } from './routes/records.js';
 export { registerHistoryRoutes } from './routes/history.js';
 export { registerCompareRoutes } from './routes/compare.js';
+export { registerAnnualRoutes } from './routes/annual.js';
 export { registerSeriesRoutes } from './routes/series.js';
 export { registerExportsRoutes } from './routes/exports.js';
 export { registerHealthRoutes } from './routes/health.js';
