@@ -44,3 +44,6 @@ data/*.db-shm
 
 # Claude Code
 .claude/
+
+# Local checkout of the weather-history branch
+history/

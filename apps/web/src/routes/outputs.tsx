@@ -253,7 +253,8 @@ function OutagesCard({ report }: { report: Latest['outages'] }) {
                       <td>{when(g.from)}</td>
                       <td>{when(g.to)}</td>
                       <td className="text-right">{hours >= 48 ? `${(hours / 24).toFixed(1)} days` : `${hours.toFixed(1)} h`}</td>
-                      <td className="text-muted">{g.kind === 'sensor-fault' ? 'Outdoor sensor silent' : 'Nothing logged'}</td>
+                      <td className="text-muted">{g.kind === 'no-data' ? 'Nothing logged'
+                        : g.measurement && g.measurement !== 'temperature.outdoor' ? `No ${g.measurement}` : 'Outdoor sensor silent'}</td>
                     </tr>
                   );
                 })}

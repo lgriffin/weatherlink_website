@@ -4,6 +4,7 @@ import type {
   ObservationRepository,
   DataGap,
   Clock,
+  MeasurementName,
 } from '@weather/domain';
 import { GapScanner } from '@weather/analytics';
 
@@ -16,11 +17,22 @@ export interface FindGapsOptions {
   readonly to?: Date;
   /** Shortest outage worth reporting. Defaults to 2 hours. */
   readonly minGapMs?: number;
+  /** Which reading must be present. Defaults to the outdoor temperature. */
+  readonly measurement?: MeasurementName;
+  /**
+   * Treat a reading of exactly zero as missing. A broken anemometer usually
+   * reports 0 rather than nothing, so this defaults to on for wind speed and gust.
+   */
+  readonly zeroIsMissing?: boolean;
 }
 
+const ZERO_WHEN_BROKEN = new Set<string>(['wind.speed', 'wind.gust', 'wind.speedAvg1Min', 'wind.speedAvg2Min', 'wind.speedAvg10Min']);
+
 /**
- * Finds outages in the archive: spans with no usable outdoor reading from the
- * ISS, either because nothing was logged or because the sensor reported nothing.
+ * Finds outages in the archive: spans with no usable reading from the ISS
+ * (outdoor temperature by default, or any other measurement such as wind
+ * speed), either because nothing was logged or because the sensor reported
+ * nothing.
  */
 export class FindDataGaps {
   constructor(
@@ -40,6 +52,8 @@ export class FindDataGaps {
 
     const from = options.from ?? station.registeredAt;
     const to = options.to ?? this.clock.now();
+    const measurement = options.measurement ?? ('temperature.outdoor' as MeasurementName);
+    const zeroIsMissing = options.zeroIsMissing ?? ZERO_WHEN_BROKEN.has(measurement);
     const scanner = new GapScanner(station.id, from, options.minGapMs ?? 2 * 60 * 60 * 1000);
 
     for (let start = from.getTime(); start < to.getTime(); start += ONE_DAY_MS) {
@@ -50,10 +64,10 @@ export class FindDataGaps {
       const points = observations
         .filter((o) => o.source === 'historic' && o.sensorId === issSensor.id)
         .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
-        .map((o) => ({
-          timestamp: o.timestamp,
-          usable: o.measurements.get('temperature.outdoor')?.value != null,
-        }));
+        .map((o) => {
+          const value = o.measurements.get(measurement)?.value;
+          return { timestamp: o.timestamp, usable: value != null && !(zeroIsMissing && value === 0) };
+        });
       scanner.add(points);
     }
 

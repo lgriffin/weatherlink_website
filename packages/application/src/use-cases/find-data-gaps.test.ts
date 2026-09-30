@@ -10,7 +10,7 @@ import {
   anObservation,
   aMeasurement,
 } from '@weather/test-support';
-import { observationId } from '@weather/domain';
+import { observationId, type MeasurementName } from '@weather/domain';
 
 describe('FindDataGaps', () => {
   it('finds an outage in the ISS archive and ignores live polls', async () => {
@@ -46,5 +46,40 @@ describe('FindDataGaps', () => {
     expect(gaps[0]!.from.toISOString()).toBe('2026-01-01T23:00:00.000Z');
     expect(gaps[0]!.to.toISOString()).toBe('2026-01-03T00:00:00.000Z');
     expect(gaps[0]!.kind).toBe('no-data');
+  });
+
+  it('finds a broken anemometer that kept reporting zero while the rest of the ISS worked', async () => {
+    const stationRepo = new InMemoryStationRepository();
+    const sensorRepo = new InMemorySensorRepository();
+    const observationRepo = new InMemoryObservationRepository();
+    const station = aStation({ registeredAt: new Date('2026-01-01T00:00:00Z') });
+    const sensor = aSensor();
+    await stationRepo.save(station);
+    await sensorRepo.save(sensor);
+
+    const obs = [];
+    for (let d = 1; d <= 4; d++) {
+      for (let h = 0; h < 24; h++) {
+        const iso = `2026-01-0${d}T${String(h).padStart(2, '0')}:00:00Z`;
+        const wind = d === 2 || d === 3 ? 0 : 3.5;
+        obs.push(anObservation({
+          id: observationId(iso), stationId: station.id, sensorId: sensor.id, source: 'historic', timestamp: new Date(iso),
+          measurements: new Map([
+            ['temperature.outdoor', aMeasurement({ value: 5 })],
+            ['wind.speed', aMeasurement({ value: wind })],
+          ]),
+        }));
+      }
+    }
+    await observationRepo.saveMany(obs);
+
+    const useCase = new FindDataGaps(stationRepo, sensorRepo, observationRepo, new FakeClock(new Date('2026-01-04T23:30:00Z')));
+    expect(await useCase.execute()).toHaveLength(0);
+
+    const wind = await useCase.execute({ measurement: 'wind.speed' as MeasurementName, minGapMs: 24 * 3_600_000 });
+    expect(wind).toHaveLength(1);
+    expect(wind[0]!.from.toISOString()).toBe('2026-01-01T23:00:00.000Z');
+    expect(wind[0]!.to.toISOString()).toBe('2026-01-04T00:00:00.000Z');
+    expect(wind[0]!.kind).toBe('sensor-fault');
   });
 });

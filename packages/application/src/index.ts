@@ -27,3 +27,5 @@ export {
 export { GetAnnualStats, type AnnualStats } from './use-cases/get-annual-stats.js';
 export { RecordIngestReport, INGEST_REPORTS_KEPT } from './use-cases/record-ingest-report.js';
 export { GetIngestOverview, type IngestOverview } from './use-cases/get-ingest-overview.js';
+export { ExportHistory, type ExportHistoryOptions, type ExportHistoryResult } from './use-cases/export-history.js';
+export { ImportHistory, type ImportHistoryResult } from './use-cases/import-history.js';

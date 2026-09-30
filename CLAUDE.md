@@ -16,7 +16,8 @@ apps/ → http-adapter → application → domain ← persistence-adapter ← we
 - `packages/contracts` — Zod schemas for env config and API DTOs
 - `packages/observability` — Pino logger, prom-client metrics, health checker
 - `packages/weatherlink-adapter` — WeatherLink v2 API client + anti-corruption layer
-- `packages/persistence-adapter` — Drizzle + PostgreSQL repositories
+- `packages/persistence-adapter` — Drizzle + SQLite repositories
+- `packages/history-store` — `HistoryStore` port adapter: the history as portable files (git branch, NAS, Drive folder)
 - `packages/application` — Use cases (orchestrate domain ports)
 - `packages/http-adapter` — Fastify route plugins
 - `packages/analytics` — [stub] Aggregation, records, trends
@@ -55,7 +56,8 @@ pnpm dev                                  # Start API + web dev servers
 pnpm dev:worker                           # Start background poller
 pnpm archive:harvest [--from D] [--force] # Download full WeatherLink archive
 pnpm archive:rebuild                      # Re-derive everything from raw archive
-pnpm archive:gaps [--min-hours N] [--json] # List hardware outages
+pnpm archive:gaps [--min-hours N] [--measurement wind.speed] [--json] [--save] # List hardware outages
+pnpm archive:export --to DIR / archive:import --from DIR  # History folder (weather-history branch)
 pnpm ml:train / ml:predict / ml:test      # Python forecast models (see ml/README.md)
 pnpm test                                 # Run all tests
 pnpm typecheck                            # Type-check all packages
