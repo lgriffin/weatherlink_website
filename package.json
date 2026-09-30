@@ -13,6 +13,7 @@
     "archive:harvest": "pnpm --filter @weather/worker archive harvest",
     "archive:rebuild": "pnpm --filter @weather/worker archive rebuild",
     "archive:gaps": "pnpm --filter @weather/worker archive gaps",
+    "site:snapshot": "pnpm --filter @weather/api snapshot",
     "ml:train": "cd ml && python3 -m wxml train",
     "ml:predict": "cd ml && python3 -m wxml predict",
     "ml:test": "cd ml && python3 -m pytest -q",

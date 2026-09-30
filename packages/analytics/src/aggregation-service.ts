@@ -30,6 +30,9 @@ const SUMMED: Record<string, MeasurementName> = {
   'degreeDays.cooling': 'degreeDays.cooling',
 };
 
+/** Daily measurements whose summary holds a total (in max) rather than an average. */
+export const DAILY_TOTAL_MEASUREMENTS: ReadonlySet<string> = new Set(Object.values(SUMMED));
+
 interface Accumulator {
   name: MeasurementName;
   unit: CanonicalUnit;

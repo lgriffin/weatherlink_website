@@ -1,4 +1,7 @@
 import { createRootRoute, Link, Outlet } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import { fetchSnapshotInfo } from '../api/client';
+import { IS_STATIC } from '../config/site';
 import '../styles.css';
 
 export const Route = createRootRoute({
@@ -37,9 +40,21 @@ function RootLayout() {
           System
         </Link>
       </nav>
+      {IS_STATIC && <SnapshotBanner />}
       <main className="page-content">
         <Outlet />
       </main>
     </>
+  );
+}
+
+function SnapshotBanner() {
+  const { data } = useQuery({ queryKey: ['snapshot'], queryFn: fetchSnapshotInfo, staleTime: 300_000 });
+  if (!data) return null;
+  const taken = new Date(data.generatedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  return (
+    <div className="snapshot-banner" role="status">
+      Snapshot taken {taken}. The site refreshes every hour.
+    </div>
   );
 }

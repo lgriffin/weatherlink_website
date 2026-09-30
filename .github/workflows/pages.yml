@@ -1,0 +1,113 @@
+# Publishes the site to GitHub Pages every hour.
+#
+# Each run tops up the station database from WeatherLink, rebuilds the derived
+# data, then publishes the web app with a JSON snapshot of every page's data.
+# The database is kept between runs in the Actions cache, so only the first
+# run downloads the full history (about 15 minutes per year of data).
+#
+# One-time setup: Settings > Pages > Source: "GitHub Actions", and repository
+# secrets WEATHERLINK_API_KEY and WEATHERLINK_API_SECRET. Optionally set the
+# repository variable WEATHERLINK_STATION_ID if the account has several stations.
+name: Publish site
+
+on:
+  schedule:
+    - cron: '7 * * * *'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      DATABASE_PATH: ${{ github.workspace }}/data/weather.db
+      WEATHERLINK_API_KEY: ${{ secrets.WEATHERLINK_API_KEY }}
+      WEATHERLINK_API_SECRET: ${{ secrets.WEATHERLINK_API_SECRET }}
+      WEATHERLINK_STATION_ID: ${{ vars.WEATHERLINK_STATION_ID }}
+      APP_TIMEZONE: Europe/Dublin
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check WeatherLink secrets
+        run: |
+          if [ -z "$WEATHERLINK_API_KEY" ] || [ -z "$WEATHERLINK_API_SECRET" ]; then
+            echo "::error::Add the WEATHERLINK_API_KEY and WEATHERLINK_API_SECRET repository secrets."
+            exit 1
+          fi
+
+      - name: Restore station database
+        uses: actions/cache/restore@v4
+        with:
+          path: data/weather.db
+          key: weather-db-${{ github.run_id }}
+          restore-keys: weather-db-
+
+      - name: Prepare database
+        run: |
+          mkdir -p data
+          touch .env
+          pnpm db:migrate
+
+      - name: Download new archive days
+        run: pnpm archive:harvest
+
+      - name: Fetch current conditions
+        run: pnpm --filter @weather/worker archive current
+
+      - name: Rebuild summaries and records
+        run: pnpm archive:rebuild
+
+      - name: Save station database
+        if: ${{ !cancelled() && hashFiles('data/weather.db') != '' }}
+        uses: actions/cache/save@v4
+        with:
+          path: data/weather.db
+          key: weather-db-${{ github.run_id }}
+
+      - name: Build the site
+        run: pnpm --filter @weather/web build
+        env:
+          VITE_STATIC: 'true'
+          VITE_BASE: /${{ github.event.repository.name }}/
+
+      - name: Snapshot the data
+        run: |
+          pnpm --filter @weather/api snapshot "$GITHUB_WORKSPACE/apps/web/dist/data"
+          # Let deep links (e.g. /records) load the app instead of a 404 page.
+          cp apps/web/dist/index.html apps/web/dist/404.html
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

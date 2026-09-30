@@ -10,14 +10,17 @@ import {
   YearComparisonResponseSchema,
   type YearComparisonResponse,
 } from '@weather/contracts';
+import { IS_STATIC, dataUrl, nearestSnapshotHours } from '../config/site';
+
+/** The live API path, or the matching file in the static snapshot. */
+async function getJson(livePath: string, snapshotPath: string): Promise<unknown> {
+  const res = await fetch(IS_STATIC ? dataUrl(snapshotPath) : livePath);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
 
 export async function fetchCurrentConditions(): Promise<CurrentConditionsResponse> {
-  const res = await fetch('/api/v1/current');
-  if (!res.ok) {
-    throw new Error(`API error: ${res.status}`);
-  }
-  const json = await res.json();
-  return CurrentConditionsResponseSchema.parse(json);
+  return CurrentConditionsResponseSchema.parse(await getJson('/api/v1/current', 'current.json'));
 }
 
 export interface StationInfo {
@@ -34,11 +37,7 @@ export interface StationInfo {
 }
 
 export async function fetchStation(): Promise<StationInfo> {
-  const res = await fetch('/api/v1/station');
-  if (!res.ok) {
-    throw new Error(`API error: ${res.status}`);
-  }
-  return res.json();
+  return (await getJson('/api/v1/station', 'station.json')) as StationInfo;
 }
 
 export interface HealthInfo {
@@ -53,22 +52,19 @@ export interface HealthInfo {
 }
 
 export async function fetchHealth(): Promise<HealthInfo> {
-  const res = await fetch('/health/ready');
+  // The live endpoint answers 503 with a body when unhealthy, so don't treat that as an error.
+  const res = await fetch(IS_STATIC ? dataUrl('health.json') : '/health/ready');
   return res.json();
 }
 
 export async function fetchRecords(scope?: string): Promise<RecordsListResponse> {
   const params = scope ? `?scope=${scope}` : '';
-  const res = await fetch(`/api/v1/records${params}`);
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
-  const json = await res.json();
+  const json = await getJson(`/api/v1/records${params}`, `records/${scope ?? 'all-time'}.json`);
   return RecordsListResponseSchema.parse(json);
 }
 
 export async function fetchHistory(monthDay: string): Promise<HistoryResponse> {
-  const res = await fetch(`/api/v1/history?date=${monthDay}`);
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
-  const json = await res.json();
+  const json = await getJson(`/api/v1/history?date=${monthDay}`, `history/${monthDay}.json`);
   return HistoryResponseSchema.parse(json);
 }
 
@@ -78,6 +74,16 @@ export async function fetchTimeSeries(
   to: string,
   resolution: string,
 ): Promise<TimeSeriesResponse> {
+  if (IS_STATIC) {
+    // The snapshot holds one file per metric for each window the pages offer.
+    const hours = nearestSnapshotHours(from, to);
+    const known = new Set((await fetchSnapshotInfo()).seriesMetrics);
+    const series = await Promise.all(metrics.filter((m) => known.has(m)).map(async (metric) => {
+      const res = await fetch(dataUrl(`series/${resolution}/${hours}/${metric}.json`));
+      return res.ok ? res.json() : null;
+    }));
+    return TimeSeriesResponseSchema.parse({ series: series.filter((s) => s !== null) });
+  }
   const params = new URLSearchParams({
     metrics: metrics.join(','),
     from,
@@ -92,8 +98,21 @@ export async function fetchTimeSeries(
 
 export async function fetchYearComparison(metric: string, month: number): Promise<YearComparisonResponse> {
   const params = new URLSearchParams({ metric, month: String(month) });
-  const res = await fetch(`/api/v1/compare?${params}`);
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
-  const json = await res.json();
+  const json = await getJson(`/api/v1/compare?${params}`, `compare/${metric}/${month}.json`);
   return YearComparisonResponseSchema.parse(json);
+}
+
+export interface SnapshotInfo {
+  generatedAt: string;
+  /** Metrics with series files in the snapshot. */
+  seriesMetrics: string[];
+}
+
+let snapshotInfo: Promise<SnapshotInfo> | null = null;
+
+/** When the static snapshot was taken and what it holds (static builds only). */
+export function fetchSnapshotInfo(): Promise<SnapshotInfo> {
+  snapshotInfo ??= getJson('', 'meta.json').then((json) => json as SnapshotInfo);
+  snapshotInfo.catch(() => { snapshotInfo = null; });
+  return snapshotInfo;
 }

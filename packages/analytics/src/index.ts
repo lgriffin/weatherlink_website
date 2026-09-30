@@ -1,4 +1,4 @@
-export { computeDailySummaries } from './aggregation-service.js';
+export { computeDailySummaries, DAILY_TOTAL_MEASUREMENTS } from './aggregation-service.js';
 export { deriveRecords } from './records-service.js';
 export { deriveDerivedRecords } from './derived-records-service.js';
 export { buildSeriesFromObservations, buildSeriesFromSummaries } from './series-service.js';

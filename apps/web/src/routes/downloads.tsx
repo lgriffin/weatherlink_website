@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { getLabel } from '../config/measurements';
+import { IS_STATIC } from '../config/site';
 
 export const Route = createFileRoute('/downloads')({
   component: DownloadsPage,
@@ -32,6 +33,23 @@ const PRESETS = [
 ];
 
 function DownloadsPage() {
+  if (IS_STATIC) return <StaticDownloadsNotice />;
+  return <DownloadForm />;
+}
+
+function StaticDownloadsNotice() {
+  return (
+    <div>
+      <h2 className="page-title">Downloads</h2>
+      <div className="measurement-card">
+        <p>Downloads are made by the station server, so they aren't available on this published snapshot.</p>
+        <p>Run the site locally (<code>pnpm dev</code>) to export CSV, JSON or SVG.</p>
+      </div>
+    </div>
+  );
+}
+
+function DownloadForm() {
   const [format, setFormat] = useState('csv');
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(['temperature.outdoor']);
   const [hoursBack, setHoursBack] = useState(24);
