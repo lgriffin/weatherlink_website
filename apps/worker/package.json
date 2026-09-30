@@ -8,7 +8,7 @@
     "build": "tsc",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
-    "archive": "tsx --env-file=../../.env src/archive.ts"
+    "archive": "tsx --env-file-if-exists=../../.env src/archive.ts"
   },
   "dependencies": {
     "tsx": "^4.19.0",
@@ -17,7 +17,8 @@
     "@weather/application": "workspace:*",
     "@weather/observability": "workspace:*",
     "@weather/weatherlink-adapter": "workspace:*",
-    "@weather/persistence-adapter": "workspace:*"
+    "@weather/persistence-adapter": "workspace:*",
+    "@weather/history-store": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

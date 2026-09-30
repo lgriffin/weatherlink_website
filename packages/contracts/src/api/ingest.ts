@@ -61,6 +61,8 @@ export const OutagesPayloadSchema = z.array(z.object({
   to: z.string(),
   kind: z.enum(['no-data', 'sensor-fault']),
   recordsWithoutData: z.number().optional(),
+  /** Which reading was missing; outdoor temperature when absent. */
+  measurement: z.string().optional(),
 }).passthrough());
 
 /** A harvest, rebuild or training run finishing on the NAS or the Spark. */

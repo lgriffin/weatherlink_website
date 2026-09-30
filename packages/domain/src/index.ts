@@ -20,5 +20,6 @@ export * from './ports/repositories.js';
 export * from './ports/clock.js';
 export * from './ports/metrics.js';
 export * from './ports/transaction-manager.js';
+export * from './ports/history-store.js';
 export * from './services/freshness.js';
 export * from './services/local-date.js';

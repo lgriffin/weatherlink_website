@@ -103,6 +103,8 @@ export async function composeWorker(name: string) {
     clock,
     client,
     stationRepo,
+    sensorRepo,
+    syncWindowRepo,
     observationRepo,
     dailySummaryRepo,
     archiveRepo,

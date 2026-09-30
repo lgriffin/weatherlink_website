@@ -5,6 +5,11 @@
 # The database is kept between runs in the Actions cache, so only the first
 # run downloads the full history (about 15 minutes per year of data).
 #
+# The raw history is also committed to the weather-history branch as plain
+# files (see its README). That branch is the durable copy: when the cache is
+# gone, the database is rebuilt from it instead of downloading everything
+# again, and it can be cloned onto a NAS or synced to Drive as it is.
+#
 # One-time setup: Settings > Pages > Source: "GitHub Actions", and repository
 # secrets WEATHERLINK_API_KEY and WEATHERLINK_API_SECRET. Optionally set the
 # repository variable WEATHERLINK_STATION_ID if the account has several stations.
@@ -18,7 +23,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write # push the weather-history branch
   pages: write
   id-token: write
 
@@ -56,17 +61,33 @@ jobs:
           fi
 
       - name: Restore station database
+        id: restore-db
         uses: actions/cache/restore@v4
         with:
           path: data/weather.db
           key: weather-db-${{ github.run_id }}
           restore-keys: weather-db-
 
+      - name: Check out the history branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if ! git clone --quiet --depth 1 --branch weather-history "$remote" history; then
+            echo "No weather-history branch yet; this run starts it."
+            git init --quiet -b weather-history history
+            git -C history remote add origin "$remote"
+          fi
+
       - name: Prepare database
         run: |
           mkdir -p data
           touch .env
           pnpm db:migrate
+
+      - name: Load the history branch into a fresh database
+        if: ${{ steps.restore-db.outputs.cache-matched-key == '' && hashFiles('history/format.json') != '' }}
+        run: pnpm archive:import --from history
 
       - name: Download new archive days
         run: pnpm archive:harvest
@@ -79,6 +100,23 @@ jobs:
 
       - name: List outages for the Outputs page
         run: pnpm archive:gaps --save
+
+      - name: List wind sensor outages
+        run: pnpm archive:gaps --measurement wind.speed --min-hours 24
+
+      - name: Save the history to the weather-history branch
+        if: ${{ !cancelled() }}
+        run: |
+          pnpm archive:export --to history
+          cd history
+          git add -A
+          if git diff --cached --quiet; then
+            echo "History unchanged."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit --quiet -m "History up to $(date -u -d yesterday +%F)"
+          git push --quiet origin HEAD:weather-history
 
       - name: Save station database
         if: ${{ !cancelled() && hashFiles('data/weather.db') != '' }}

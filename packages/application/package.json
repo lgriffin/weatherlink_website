@@ -19,6 +19,7 @@
   "devDependencies": {
     "typescript": "^5.7.0",
     "vitest": "^3.0.0",
-    "@weather/test-support": "workspace:*"
+    "@weather/test-support": "workspace:*",
+    "@weather/history-store": "workspace:*"
   }
 }
