@@ -95,6 +95,12 @@ The WeatherLink API returns at most 24 hours per request, so the harvest fetches
 
 Daily summaries use local calendar days in `APP_TIMEZONE`, and are built from archive intervals when a day has them (live polls are used only for days with no archive data). Daily rain is the sum of the interval rainfall, and daily highs and lows include each interval's own high and low.
 
+## Published site (GitHub Pages)
+
+`.github/workflows/pages.yml` publishes the site every hour at `https://<owner>.github.io/<repo>/`. Each run downloads any new archive days and the current conditions from WeatherLink, rebuilds summaries and records, then builds the web app in static mode (`VITE_STATIC=true`) with a JSON snapshot of every page's data (`pnpm site:snapshot`). The database is kept between runs in the Actions cache, so only the first run downloads the full history.
+
+One-time setup: in the repository settings, set Pages > Source to "GitHub Actions" and add the `WEATHERLINK_API_KEY` and `WEATHERLINK_API_SECRET` secrets. The published snapshot leaves out the station's coordinates, and Downloads stay on the local server.
+
 ## Local forecast models
 
 The `ml/` folder (Python) trains your station's own forecast models from the archive: tonight's low and frost chance, tomorrow's high, rain in the next 6 and 24 hours, and the temperature this time tomorrow. Each model is scored against "a normal day for the date" and "the same as now" on the last 12 months. It also builds a fine-tuning set and a Modelfile for an Ollama model that writes the forecast in plain English. See [ml/README.md](ml/README.md).

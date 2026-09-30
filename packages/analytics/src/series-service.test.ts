@@ -74,4 +74,14 @@ describe('buildSeriesFromSummaries', () => {
     expect(result.points[0]!.value).toBe(18);
     expect(result.points[2]!.value).toBe(22);
   });
+
+  it('uses the daily total for summed measurements such as rain', () => {
+    const summaries = [
+      aDailySummary({ date: '2026-07-15', measurementName: 'rain.daily' as MeasurementName, min: null, max: 4.2, avg: null }),
+    ];
+
+    const result = buildSeriesFromSummaries('rain.daily' as MeasurementName, summaries, 'avg');
+
+    expect(result.points[0]!.value).toBe(4.2);
+  });
 });

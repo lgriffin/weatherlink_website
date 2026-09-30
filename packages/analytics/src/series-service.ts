@@ -1,5 +1,6 @@
 import type { Observation, DailySummary, MeasurementName, CanonicalUnit } from '@weather/domain';
 import { MEASUREMENT_UNITS } from '@weather/domain';
+import { DAILY_TOTAL_MEASUREMENTS } from './aggregation-service.js';
 
 export type Resolution = 'raw' | 'hourly' | 'daily';
 
@@ -71,7 +72,8 @@ export function buildSeriesFromSummaries(
 
   for (const s of summaries) {
     if (s.measurementName !== metric) continue;
-    const value = s[field];
+    // A daily total (rain, wind run, ...) is stored as max; its avg is null.
+    const value = field === 'avg' && DAILY_TOTAL_MEASUREMENTS.has(metric) ? s.max : s[field];
     const ts = new Date(`${s.date}T12:00:00Z`).getTime();
     points.push({ timestamp: ts, value });
   }

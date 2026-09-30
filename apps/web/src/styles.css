@@ -156,6 +156,15 @@ body {
   padding: var(--space-lg);
 }
 
+/* ---- Snapshot banner (static build) ---- */
+.snapshot-banner {
+  max-width: 1400px;
+  margin: var(--space-md) auto 0;
+  padding: var(--space-sm) var(--space-lg);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
 /* ---- Page Titles ---- */
 
 .page-title {
@@ -766,6 +775,10 @@ body {
 
   .chart-grid {
     grid-template-columns: 1fr;
+  }
+
+  .snapshot-banner {
+    padding: var(--space-sm) var(--space-md);
   }
 
   .page-content {

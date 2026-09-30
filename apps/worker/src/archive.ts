@@ -13,6 +13,9 @@
  *   pnpm archive:gaps [--from YYYY-MM-DD] [--min-hours 2] [--json]
  *     List outages: spans with no usable outdoor reading, either because
  *     nothing was logged or because the ISS reported nothing.
+ *
+ *   pnpm --filter @weather/worker archive current
+ *     Fetch current conditions once (used before publishing a snapshot).
  */
 import { parseArgs } from 'node:util';
 import type { DataGap } from '@weather/domain';
@@ -29,9 +32,9 @@ const { positionals, values } = parseArgs({
 });
 
 const command = positionals[0];
-if (command !== 'harvest' && command !== 'rebuild' && command !== 'gaps') {
+if (command !== 'harvest' && command !== 'rebuild' && command !== 'gaps' && command !== 'current') {
   console.error(
-    'Usage: archive <harvest [--from YYYY-MM-DD] [--force] | rebuild | gaps [--from YYYY-MM-DD] [--min-hours N] [--json]>',
+    'Usage: archive <harvest [--from YYYY-MM-DD] [--force] | rebuild | gaps [--from YYYY-MM-DD] [--min-hours N] [--json] | current>',
   );
   process.exit(1);
 }
@@ -65,6 +68,10 @@ try {
       force: values.force,
     });
     logger.info(result, 'Harvest finished. Run "pnpm archive:rebuild" to refresh summaries and records.');
+  } else if (command === 'current') {
+    await worker.discoverStations.execute();
+    const observations = await worker.pollCurrentConditions.execute();
+    logger.info({ observations: observations.length }, 'Current conditions saved');
   } else if (command === 'rebuild') {
     const result = await worker.rebuildFromArchive.execute();
     logger.info(result, 'Rebuild finished');
