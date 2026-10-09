@@ -25,6 +25,13 @@ describe('EnvSchema', () => {
     expect(result.METRICS_ENABLED).toBe(true);
   });
 
+  it('shows an approximate station location unless told otherwise', () => {
+    expect(EnvSchema.parse(validEnv).PUBLIC_LOCATION).toBe('approximate');
+    expect(EnvSchema.parse({ ...validEnv, PUBLIC_LOCATION: '' }).PUBLIC_LOCATION).toBe('approximate');
+    expect(EnvSchema.parse({ ...validEnv, PUBLIC_LOCATION: 'exact' }).PUBLIC_LOCATION).toBe('exact');
+    expect(EnvSchema.safeParse({ ...validEnv, PUBLIC_LOCATION: 'street' }).success).toBe(false);
+  });
+
   it('rejects missing API key', () => {
     const result = EnvSchema.safeParse({
       ...validEnv,

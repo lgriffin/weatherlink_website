@@ -31,6 +31,9 @@ export const EnvSchema = z.object({
   INGEST_SOURCE: optional(z.string().max(64)),
   // Built web app to serve alongside the API (the container sets this).
   WEB_DIST_DIR: optional(z.string()),
+  // How much of the station's position the public snapshot shows on the Map page:
+  // exact, approximate (a 0.1° grid cell, about a town) or hidden.
+  PUBLIC_LOCATION: optional(z.enum(['exact', 'approximate', 'hidden'])).transform((v) => v ?? 'approximate'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

@@ -4,14 +4,16 @@
  *
  *   pnpm site:snapshot [outDir]      (default: apps/web/dist/data)
  *
- * Reads the local database only; it never calls WeatherLink. The station's
- * coordinates are left out because the published site is public.
+ * Reads the local database only; it never calls WeatherLink. The published
+ * site is public, so the station's coordinates are coarsened to the level
+ * PUBLIC_LOCATION allows (approximate by default) for the Map page.
  */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { EnvSchema } from '@weather/contracts';
 import { RUNNING_TOTAL_METRICS } from '@weather/application';
+import { publicLocation } from '@weather/domain';
 import { buildApp } from './app.js';
 
 // Series windows and resolutions the Trends page and sparklines offer.
@@ -69,8 +71,18 @@ async function seriesMetrics(): Promise<string[]> {
 try {
   const generatedAt = new Date();
 
-  const station = (await get('/api/v1/station')) as { stations: Array<Record<string, unknown>> };
-  station.stations = station.stations.map((s) => ({ ...s, latitude: null, longitude: null }));
+  const station = (await get('/api/v1/station')) as {
+    stations: Array<{ latitude: number | null; longitude: number | null }>;
+  };
+  station.stations = station.stations.map((s) => {
+    const loc = publicLocation(s.latitude, s.longitude, env.PUBLIC_LOCATION);
+    return {
+      ...s,
+      latitude: loc?.latitude ?? null,
+      longitude: loc?.longitude ?? null,
+      locationRadiusMetres: loc?.radiusMetres ?? null,
+    };
+  });
   await save('station.json', station);
 
   await save('current.json', await get('/api/v1/current', { allowError: true }));
