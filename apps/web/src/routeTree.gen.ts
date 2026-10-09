@@ -14,6 +14,7 @@ import { Route as AnnualRouteImport } from './routes/annual'
 import { Route as CompareRouteImport } from './routes/compare'
 import { Route as DownloadsRouteImport } from './routes/downloads'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as MapRouteImport } from './routes/map'
 import { Route as OutputsRouteImport } from './routes/outputs'
 import { Route as RecordsRouteImport } from './routes/records'
 import { Route as SystemRouteImport } from './routes/system'
@@ -44,6 +45,11 @@ const HistoryRoute = HistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MapRoute = MapRouteImport.update({
+  id: '/map',
+  path: '/map',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OutputsRoute = OutputsRouteImport.update({
   id: '/outputs',
   path: '/outputs',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/compare': typeof CompareRoute
   '/downloads': typeof DownloadsRoute
   '/history': typeof HistoryRoute
+  '/map': typeof MapRoute
   '/outputs': typeof OutputsRoute
   '/records': typeof RecordsRoute
   '/system': typeof SystemRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/compare': typeof CompareRoute
   '/downloads': typeof DownloadsRoute
   '/history': typeof HistoryRoute
+  '/map': typeof MapRoute
   '/outputs': typeof OutputsRoute
   '/records': typeof RecordsRoute
   '/system': typeof SystemRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/compare': typeof CompareRoute
   '/downloads': typeof DownloadsRoute
   '/history': typeof HistoryRoute
+  '/map': typeof MapRoute
   '/outputs': typeof OutputsRoute
   '/records': typeof RecordsRoute
   '/system': typeof SystemRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/compare'
     | '/downloads'
     | '/history'
+    | '/map'
     | '/outputs'
     | '/records'
     | '/system'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/compare'
     | '/downloads'
     | '/history'
+    | '/map'
     | '/outputs'
     | '/records'
     | '/system'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/compare'
     | '/downloads'
     | '/history'
+    | '/map'
     | '/outputs'
     | '/records'
     | '/system'
@@ -141,6 +153,7 @@ export interface RootRouteChildren {
   CompareRoute: typeof CompareRoute
   DownloadsRoute: typeof DownloadsRoute
   HistoryRoute: typeof HistoryRoute
+  MapRoute: typeof MapRoute
   OutputsRoute: typeof OutputsRoute
   RecordsRoute: typeof RecordsRoute
   SystemRoute: typeof SystemRoute
@@ -184,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/map': {
+      id: '/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof MapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/outputs': {
       id: '/outputs'
       path: '/outputs'
@@ -221,6 +241,7 @@ const rootRouteChildren: RootRouteChildren = {
   CompareRoute: CompareRoute,
   DownloadsRoute: DownloadsRoute,
   HistoryRoute: HistoryRoute,
+  MapRoute: MapRoute,
   OutputsRoute: OutputsRoute,
   RecordsRoute: RecordsRoute,
   SystemRoute: SystemRoute,

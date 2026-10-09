@@ -12,7 +12,8 @@
 #
 # One-time setup: Settings > Pages > Source: "GitHub Actions", and repository
 # secrets WEATHERLINK_API_KEY and WEATHERLINK_API_SECRET. Optionally set the
-# repository variable WEATHERLINK_STATION_ID if the account has several stations.
+# repository variable WEATHERLINK_STATION_ID if the account has several stations,
+# and PUBLIC_LOCATION (exact, approximate or hidden) for the Map page's station spot.
 name: Publish site
 
 on:
@@ -132,6 +133,9 @@ jobs:
           VITE_BASE: /${{ github.event.repository.name }}/
 
       - name: Snapshot the data
+        env:
+          # exact, approximate (default: a 0.1° grid cell, about a town) or hidden.
+          PUBLIC_LOCATION: ${{ vars.PUBLIC_LOCATION }}
         run: |
           pnpm --filter @weather/api snapshot "$GITHUB_WORKSPACE/apps/web/dist/data"
           # Let deep links (e.g. /records) load the app instead of a 404 page.

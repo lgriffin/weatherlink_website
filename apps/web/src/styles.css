@@ -1081,3 +1081,124 @@ body {
 .outputs-form small {
   color: var(--color-text-muted);
 }
+
+/* Map */
+.map-intro {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  margin: 0 0 var(--space-md);
+}
+
+.map-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.map-timeline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+
+.map-timeline input[type='range'] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--color-primary);
+}
+
+.map-play {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: var(--text-sm);
+}
+
+.map-play:hover {
+  border-color: var(--color-primary);
+}
+
+.map-time {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 7.5em;
+}
+
+.map-time__latest {
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+}
+
+.station-map {
+  height: min(70vh, 640px);
+  min-height: 360px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  background: var(--color-surface-inset);
+  z-index: 0;
+}
+
+.map-station {
+  stroke: var(--color-primary);
+  stroke-width: 3;
+  fill: var(--color-primary);
+  fill-opacity: 0.9;
+}
+
+.map-station--area {
+  fill-opacity: 0.25;
+  stroke-dasharray: 6 4;
+}
+
+.map-note {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  margin-top: var(--space-sm);
+}
+
+.station-map .leaflet-control-attribution {
+  font-size: 11px;
+}
+
+@media (prefers-color-scheme: dark) {
+  /* No keyless dark map style, so darken the OpenStreetMap tiles in place. */
+  .station-map .map-base {
+    filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
+  }
+
+  .station-map.leaflet-container .leaflet-control-attribution,
+  .station-map.leaflet-container .leaflet-bar a,
+  .station-map.leaflet-container .leaflet-tooltip {
+    background: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border);
+  }
+
+  .station-map.leaflet-container .leaflet-control-attribution a {
+    color: #93c5fd;
+  }
+}
+
+@media (max-width: 768px) {
+  .station-map {
+    height: 65vh;
+  }
+
+  .map-timeline {
+    max-width: none;
+  }
+}

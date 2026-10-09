@@ -13,6 +13,7 @@
     "@tanstack/react-query": "^5.60.0",
     "@tanstack/react-router": "^1.100.0",
     "@weather/contracts": "workspace:*",
+    "leaflet": "1.9.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^3.10.0",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@tanstack/router-plugin": "^1.100.0",
+    "@types/leaflet": "^1.9.22",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.0",

@@ -114,7 +114,9 @@ Daily summaries use local calendar days in `APP_TIMEZONE`, and are built from ar
 
 `.github/workflows/pages.yml` publishes the site every hour at `https://<owner>.github.io/<repo>/`. Each run downloads any new archive days and the current conditions from WeatherLink, rebuilds summaries and records, then builds the web app in static mode (`VITE_STATIC=true`) with a JSON snapshot of every page's data (`pnpm site:snapshot`). The database is kept between runs in the Actions cache, so only the first run downloads the full history.
 
-One-time setup: in the repository settings, set Pages > Source to "GitHub Actions" and add the `WEATHERLINK_API_KEY` and `WEATHERLINK_API_SECRET` secrets. The published snapshot leaves out the station's coordinates, and Downloads stay on the local server.
+One-time setup: in the repository settings, set Pages > Source to "GitHub Actions" and add the `WEATHERLINK_API_KEY` and `WEATHERLINK_API_SECRET` secrets. The published snapshot only shows the station's approximate area (a 0.1° grid cell, about a town) on the Map page; set the repository variable `PUBLIC_LOCATION` to `exact` to show the real spot or `hidden` to show none. Downloads stay on the local server.
+
+The Map page shows the station on OpenStreetMap with the last two hours of rain radar from [RainViewer](https://www.rainviewer.com/api.html) and the latest Meteosat infrared cloud image from [EUMETSAT](https://view.eumetsat.int/). All three are free and need no key; the page credits them in the map's corner.
 
 ## Local forecast models
 
@@ -156,6 +158,7 @@ Copy `.env.example` to `.env` and configure:
 | `PORT` | `1456` | API server port |
 | `CURRENT_POLL_INTERVAL_MS` | `60000` | Polling interval in milliseconds |
 | `APP_TIMEZONE` | `Europe/Dublin` | Station timezone for calendar calculations |
+| `PUBLIC_LOCATION` | `approximate` | How much of the station position the public snapshot shows on the Map page: `exact`, `approximate` or `hidden` |
 | `LOG_LEVEL` | `info` | Pino log level |
 | `RETENTION_OBSERVATION_MAX_AGE_DAYS` | `0` | Delete observations older than this; `0` keeps them forever |
 | `RETENTION_SUMMARY_MAX_AGE_DAYS` | `0` | Delete daily summaries older than this; `0` keeps them forever |

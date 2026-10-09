@@ -23,3 +23,4 @@ export * from './ports/transaction-manager.js';
 export * from './ports/history-store.js';
 export * from './services/freshness.js';
 export * from './services/local-date.js';
+export * from './services/public-location.js';

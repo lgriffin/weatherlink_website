@@ -35,6 +35,8 @@ export interface StationInfo {
     timezone: string;
     latitude: number | null;
     longitude: number | null;
+    /** Set by the public snapshot: how far the real spot can be from the one shown. */
+    locationRadiusMetres?: number | null;
     elevationMetres: number | null;
     isActive: boolean;
   }>;
