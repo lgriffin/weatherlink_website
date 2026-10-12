@@ -148,6 +148,8 @@ jobs:
             python -m wxml "${dirs[@]}" issue --ledger "$ledger" --publish "$outputs" --with-scores
             python -m wxml verify --ledger "$ledger"
           else
+            # Met Éireann's stations only offer today's readings to the runners: keep them each hour.
+            python -m wxml "${dirs[@]}" neighbours-sync --recent-only || echo "::warning::Could not keep the neighbours' readings."
             # Already issued: send it again as issued, in case loading it into the site failed last time.
             python -m wxml issue --ledger "$ledger" --publish "$outputs" --guidance none || exit 0
           fi

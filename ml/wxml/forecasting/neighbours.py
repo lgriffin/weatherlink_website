@@ -147,9 +147,42 @@ def sync_neighbours(source, archive, first: str, today: pd.Timestamp | None = No
         month_end = month_start + pd.offsets.MonthEnd(0)
         # Whole months only, so a month marked complete really is.
         frame = source.hourly(f'{month_start:%Y-%m-%d}', f'{min(month_end, last_day):%Y-%m-%d}')
+        # Keep the hours saved from the recent readings that the history doesn't have yet.
+        frame = merge_readings(frame, archive.load(source.name, f'{month_start:%Y-%m-%d}', f'{month_end:%Y-%m-%d}'))
         # Late corrections and monthly uploads settle within a few weeks.
         complete = today > month_end + pd.Timedelta(days=35)
         archive.save_month(source.name, month, frame, complete)
         log(f'{source.name} {month}: {len(frame):,} readings from {frame["site"].nunique()} sites')
         fetched.append(month)
     return fetched
+
+
+def merge_readings(preferred: pd.DataFrame, other: pd.DataFrame) -> pd.DataFrame:
+    """Both sets of readings, taking `preferred`'s where both have a (site, hour)."""
+    frames = [f[NEIGHBOUR_COLUMNS] for f in (preferred, other) if len(f)]
+    if not frames:
+        return empty_neighbours()
+    both = pd.concat(frames, ignore_index=True)
+    return both.drop_duplicates(['site', 'hour'], keep='first').sort_values(['site', 'hour']).reset_index(drop=True)
+
+
+def keep_recent(source, archive, hours: int = 24, log=lambda _: None) -> int:
+    """Save the source's readings from the last `hours` into the archive, beside what is there.
+
+    For a source whose history can't be fetched (Met Éireann's climate-data site doesn't answer
+    GitHub's runners), this is how its archive grows: a day at a time, run each evening. The newer
+    copy of an hour wins: an hour's rain is often not out yet the first time it is seen."""
+    frame = source.recent(hours=hours)
+    if frame.empty:
+        return 0
+    stored = archive.months(source.name)
+    added = 0
+    for month_start, part in frame.groupby(frame['hour'].dt.tz_convert('UTC').dt.strftime('%Y-%m-01')):
+        start = pd.Timestamp(month_start, tz='UTC')
+        month = f'{start:%Y-%m}'
+        saved = archive.load(source.name, f'{start:%Y-%m-%d}', f'{start + pd.offsets.MonthEnd(0):%Y-%m-%d}')
+        merged = merge_readings(part, saved)
+        archive.save_month(source.name, month, merged, stored.get(month, {}).get('complete', False))
+        added += len(merged) - len(saved)
+    log(f'{source.name}: kept {added:,} recent readings')
+    return added

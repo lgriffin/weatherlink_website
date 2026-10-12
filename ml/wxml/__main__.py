@@ -373,16 +373,24 @@ def _keep_guidance(args, record, frames):
 
 def cmd_neighbours_sync(args):
     from .adapters.neighbour_files import NeighbourFiles
-    from .forecasting.neighbours import sync_neighbours
+    from .forecasting.neighbours import keep_recent, sync_neighbours
     archive = NeighbourFiles(args.neighbours_dir)
+    log = lambda line: print(line, file=sys.stderr)  # noqa: E731
     failed = False
     for source in _neighbour_sources():
+        synced = False
+        if not args.recent_only:
+            try:
+                fetched = sync_neighbours(source, archive, args.since, log=log)
+                print(f'{source.name}: fetched {len(fetched)} month(s) into {args.neighbours_dir}')
+                synced = True
+            except (RuntimeError, OSError, ValueError) as err:
+                print(f'{source.name}: {err}', file=sys.stderr)
         try:
-            fetched = sync_neighbours(source, archive, args.since, log=lambda line: print(line, file=sys.stderr))
-            print(f'{source.name}: fetched {len(fetched)} month(s) into {args.neighbours_dir}')
+            keep_recent(source, archive, log=log)
         except (RuntimeError, OSError, ValueError) as err:
-            print(f'{source.name}: {err}', file=sys.stderr)
-            failed = True
+            print(f'{source.name} (recent): {err}', file=sys.stderr)
+            failed = failed or not synced
     print('Readings from Met Éireann (CC BY 4.0) and the Marine Institute (CC BY 4.0)')
     if failed:
         raise SystemExit(1)
@@ -492,6 +500,7 @@ def main(argv=None):
 
     p = sub.add_parser('neighbours-sync', help='save Met Éireann station and Atlantic buoy readings for training')
     p.add_argument('--since', default='2023-01-01', help='first date to fetch (default: 2023-01-01)')
+    p.add_argument('--recent-only', action='store_true', help="only save the last day's readings (quick)")
     p.set_defaults(func=cmd_neighbours_sync)
 
     p = sub.add_parser('scores', help="the last training run's scores as a Markdown table")

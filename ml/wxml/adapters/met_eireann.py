@@ -52,12 +52,19 @@ def _fetch(url: str) -> bytes:
     return get_bytes(url, 'Met Éireann')
 
 
+def _fetch_history(url: str) -> bytes:
+    # The climate-data site doesn't answer GitHub's runners at all; don't wait minutes to learn that.
+    return get_bytes(url, 'Met Éireann climate data', timeout=30, attempts=1)
+
+
 class MetEireannObservations:
     name = 'met-eireann'
 
     def __init__(self, fetch: FetchBytes = _fetch, stations: dict[str, int] = STATIONS,
-                 history_url: str = HISTORY_URL, today_url: str = TODAY_URL):
+                 history_url: str = HISTORY_URL, today_url: str = TODAY_URL,
+                 fetch_history: FetchBytes | None = None):
         self._fetch = fetch
+        self._fetch_history = fetch_history or (_fetch_history if fetch is _fetch else fetch)
         self.stations = stations
         self._history_url = history_url
         self._today_url = today_url
@@ -69,7 +76,7 @@ class MetEireannObservations:
         frames = []
         for site, number in self.stations.items():
             if site not in self._history:  # one download per station, however many months are asked for
-                body = self._fetch(self._history_url.format(number=number))
+                body = self._fetch_history(self._history_url.format(number=number))
                 self._history[site] = parse_history(_unzip(body), site)
             h = self._history[site]
             frames.append(h[(h['hour'] >= first) & (h['hour'] < after)])

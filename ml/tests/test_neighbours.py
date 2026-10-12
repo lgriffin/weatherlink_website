@@ -244,3 +244,48 @@ def test_todays_observations_stop_asking_once_the_service_is_unreachable():
 
     frame = MetEireannObservations(fetch=fetch).recent(24)
     assert frame.empty and len(asked) == 1
+
+
+def test_recent_readings_are_kept_beside_the_saved_history(tmp_path):
+    from wxml.forecasting.neighbours import keep_recent
+    first = pd.date_range('2025-03-31 22:00', periods=4, freq='h', tz='UTC')
+
+    class Source:
+        name = 'fake'
+        calls = 0
+
+        def hourly(self, start, end):
+            hours = pd.date_range(start, pd.Timestamp(end) + pd.Timedelta(hours=23), freq='h', tz='UTC')
+            return readings('M3', hours[:-6], 1000.0).assign(source='fake')  # the history lags a few hours
+
+        def recent(self, hours=24):
+            Source.calls += 1
+            frame = readings('M3', first, 990.0 + Source.calls).assign(source='fake')
+            frame.loc[frame.index[-1], 'rain'] = np.nan if Source.calls == 1 else 0.4
+            return frame
+
+    files = NeighbourFiles(tmp_path)
+    source = Source()
+    assert keep_recent(source, files) == 4  # two hours in March, two in April
+    assert set(files.months('fake')) == {'2025-03', '2025-04'}
+    assert keep_recent(source, files) == 0
+    april = files.load('fake', '2025-04-01', '2025-04-30')
+    assert len(april) == 2 and april['pressure'].eq(992.0).all() and april['rain'].iloc[-1] == 0.4
+
+    # The history, when it can be fetched, wins for the hours it has and keeps the others.
+    sync_neighbours(source, files, '2025-03-01', pd.Timestamp('2025-04-02', tz='UTC'))
+    march = files.load('fake', '2025-03-01', '2025-03-31')
+    assert len(march) == 31 * 24 - 6 + 2 and march.set_index('hour')['pressure'].loc[first[1]] == 992.0
+    assert march.set_index('hour')['pressure'].loc[first[0] - pd.Timedelta(hours=6)] == 1000.0
+
+
+def test_station_history_has_its_own_fetch():
+    from wxml.adapters.http import Unreachable
+
+    def history(url):
+        raise Unreachable('Could not reach Met Éireann climate data: timed out')
+
+    obs = MetEireannObservations(fetch=lambda url: json.dumps(TODAY).encode(), stations={'valentia': 2275},
+                                 fetch_history=history)
+    with pytest.raises(Unreachable):
+        obs.hourly('2025-01-01', '2025-01-01')
