@@ -60,7 +60,7 @@ def _fetch_once(url: str, timeout: float) -> dict:
         return json.loads(resp.read())
 
 
-def _fetch_json(url: str, timeout: float = 120, attempts: int = 4,
+def _fetch_json(url: str, timeout: float = 60, attempts: int = 3,
                 sleep: Callable[[float], None] = time.sleep) -> dict:
     """GET and parse JSON, trying again after a pause when Open-Meteo is busy or the network blips."""
     for attempt in range(1, attempts + 1):

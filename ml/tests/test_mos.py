@@ -112,9 +112,37 @@ def test_sync_fetches_what_is_missing_up_to_yesterday(tmp_path):
     source.asked.clear()
     assert sync_guidance(source, files, HERE, ['a'], first='2025-01-15', today=today + pd.Timedelta(days=1)) == ['2025-03']
     # A new model is fetched for every month, together with the ones already kept.
+    source.asked.clear()
     fetched = sync_guidance(source, files, HERE, ['b'], first='2025-01-15', today=today + pd.Timedelta(days=1))
-    assert fetched == ['2025-01', '2025-02', '2025-03'] and source.asked[-1][2] == ('a', 'b')
+    assert fetched == ['2025-01', '2025-02', '2025-03'] and source.asked[:2] == [
+        ('2025-01-15', '2025-01-31', ('a',)), ('2025-01-15', '2025-01-31', ('b',))]
     assert set(files.load('fake', 1)['model']) == {'a', 'b'}
+
+
+def test_sync_keeps_going_past_one_failing_model_but_not_a_dead_source(tmp_path):
+    class Flaky(MonthSource):
+        def __init__(self, broken):
+            super().__init__()
+            self.broken = broken
+
+        def as_issued(self, location, models, start, end, lead_days=1):
+            if models[0] in self.broken:
+                raise RuntimeError('Could not reach Open-Meteo: timed out')
+            return super().as_issued(location, models, start, end, lead_days)
+
+    files, today = GuidanceFiles(tmp_path), pd.Timestamp('2025-06-10', tz='UTC')
+    lines = []
+    sync_guidance(Flaky({'b'}), files, HERE, ['a', 'b'], first='2025-01-01', today=today, give_up_after=10,
+                  log=lines.append)
+    months = files.months('fake', 1)
+    assert months['2025-01'] == {'models': {'a'}, 'complete': False}   # b is tried again next time
+    assert any('2025-01 b: Could not reach' in line for line in lines)
+    with pytest.raises(RuntimeError):
+        sync_guidance(Flaky({'a', 'b'}), GuidanceFiles(tmp_path / 'other'), HERE, ['a', 'b'],
+                      first='2025-01-01', today=today)
+    # When b comes back, the month gets both, and keeps a.
+    sync_guidance(Flaky(set()), files, HERE, ['a', 'b'], first='2025-01-01', today=today)
+    assert files.months('fake', 1)['2025-01'] == {'models': {'a', 'b'}, 'complete': True}
 
 
 def test_guided_models_learn_the_correction(trained):

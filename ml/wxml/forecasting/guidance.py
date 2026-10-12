@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 from ..data import Station
-from .domain import Location
+from .domain import Location, empty_guidance
 from .ports import ForecastSource, GuidanceArchive, ObservationStore
 
 # Variables the station measures too, so they can be scored.
@@ -87,29 +87,48 @@ GUIDANCE_FROM = '2024-01-01'
 
 def sync_guidance(source: ForecastSource, archive: GuidanceArchive, location: Location, models: list[str],
                   lead_days: int = 1, first: str = GUIDANCE_FROM, today: pd.Timestamp | None = None,
-                  log: Callable[[str], None] = lambda _: None) -> list[str]:
-    """Fetch the as-issued guidance the archive is missing, a month at a time, up to yesterday (UTC).
+                  log: Callable[[str], None] = lambda _: None, give_up_after: int = 3) -> list[str]:
+    """Fetch the as-issued guidance the archive is missing, a month and a model at a time, up to yesterday (UTC).
 
     A month is fetched again while it can still change (it was incomplete when
-    last fetched) or when it lacks a model now asked for. Returns the months fetched.
+    last fetched) or when it lacks a model now asked for. A model that fails is
+    skipped for that month and tried again next time; after `give_up_after`
+    failures in a row the source is taken to be down and the error is raised.
+    Months fetched before that are kept. Returns the months saved.
     """
     today = (today or pd.Timestamp.now(tz='UTC')).floor('D')
     last_day = today - pd.Timedelta(days=1)
     stored = archive.months(source.name, lead_days)
     fetched = []
+    failures = 0
     for month_start in pd.date_range(pd.Timestamp(first, tz='UTC').replace(day=1), last_day, freq='MS'):
         month = f'{month_start:%Y-%m}'
         info = stored.get(month)
         if info and info['complete'] and set(models) <= info['models']:
             continue
-        asked = sorted(set(models) | (info['models'] if info else set()))
+        wanted = sorted(set(models) | (info['models'] if info else set()))
         month_end = month_start + pd.offsets.MonthEnd(0)
-        end = min(month_end, last_day)
-        start = max(month_start, pd.Timestamp(first, tz='UTC'))
-        frame = source.as_issued(location, asked, f'{start:%Y-%m-%d}', f'{end:%Y-%m-%d}', lead_days)
-        # Settled once the whole month is in the past by more than the lead time.
-        complete = today > month_end + pd.Timedelta(days=lead_days + 1)
-        archive.save_month(source.name, lead_days, month, frame, asked, complete)
+        start = f'{max(month_start, pd.Timestamp(first, tz="UTC")):%Y-%m-%d}'
+        end = f'{min(month_end, last_day):%Y-%m-%d}'
+        kept = archive.load(source.name, lead_days, start, end) if info else None
+        frames, done = [], []
+        for model in wanted:
+            try:
+                frames.append(source.as_issued(location, [model], start, end, lead_days))
+                done.append(model)
+                failures = 0
+            except RuntimeError as err:
+                failures += 1
+                log(f'{month} {model}: {err}')
+                if kept is not None:
+                    frames.append(kept[kept['model'] == model])  # keep what was there
+                if failures >= give_up_after:
+                    raise
+        frame = pd.concat(frames, ignore_index=True) if frames else empty_guidance()
+        # Settled once the whole month is in the past by more than the lead time, and every model came.
+        complete = today > month_end + pd.Timedelta(days=lead_days + 1) and len(done) == len(wanted)
+        archive.save_month(source.name, lead_days, month, frame, done, complete)
         log(f'{month}: {len(frame):,} hours of guidance from {frame["model"].nunique()} models')
         fetched.append(month)
     return fetched
+
