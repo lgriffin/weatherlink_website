@@ -193,7 +193,10 @@ INSTANT = {
 
 
 def parse_forecast(body: bytes) -> pd.DataFrame:
-    root = ET.fromstring(body)
+    try:
+        root = ET.fromstring(body)
+    except ET.ParseError as err:
+        raise ValueError(f"Met Éireann's forecast is not XML ({err})") from None
     hours: dict[pd.Timestamp, dict] = {}
     for t in root.iter('time'):
         start, end = pd.Timestamp(t.get('from')), pd.Timestamp(t.get('to'))

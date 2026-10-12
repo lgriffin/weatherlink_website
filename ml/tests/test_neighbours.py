@@ -140,10 +140,28 @@ def test_features_group_the_sites():
     # M3 and M6 fall 1 hPa an hour, M4 (also on the Atlantic edge) holds steady.
     assert f['n_west_pressure_change_3h'] == pytest.approx(-2.0)
     assert f['n_west_pressure_change_12h'] == pytest.approx(-8.0)
-    west = np.mean([falling[-1], falling[-1] + 4, 1000.0])          # M3, M6, M4
-    assert f['n_west_minus_here'] == pytest.approx(west - 1000.0)
-    assert f['n_south_minus_north'] == pytest.approx(np.mean([falling[-1], 1006.0]) - 1000.0)
+    # Levels come from the land stations only, and only when all of them report: buoys alone give none.
+    assert np.isnan(f['n_west_minus_here']) and np.isnan(f['n_south_minus_north'])
     assert np.isnan(f['n_rain_3h'])
+
+    land = pd.concat([n, readings('valentia', hours, 1004.0, temp=11.0, wind=8.0),
+                      readings('belmullet', hours, 1002.0, temp=9.0, wind=12.0),
+                      readings('cork-airport', hours, 1008.0), readings('malin-head', hours, 998.0)])
+    f = features(land, hours[-1:], here).iloc[0]
+    assert f['n_west_minus_here'] == pytest.approx(3.0)              # Valentia and Belmullet
+    assert f['n_south_minus_north'] == pytest.approx(6.0)            # Valentia, Cork minus Belmullet, Malin
+    assert f['n_west_temp'] == pytest.approx(10.0) and f['n_west_wind'] == pytest.approx(10.0)
+    # One land station silent: no level, rather than one that jumps by the site's usual offset.
+    gappy = land[~((land['site'] == 'belmullet') & (land['hour'] == hours[-1]))]
+    assert np.isnan(features(gappy, hours[-1:], here).iloc[0]['n_west_minus_here'])
+
+
+def test_rain_out_west_uses_reports_already_out():
+    hours = pd.date_range('2025-01-01', periods=6, freq='h', tz='UTC')
+    rain = np.array([0.0, 0.0, 1.0, 1.0, 1.0, np.nan])               # this hour's report not in yet
+    n = readings('valentia', hours, 1000.0, rain=rain)
+    f = features(n, hours[-1:], pd.Series(1000.0, index=hours)).iloc[0]
+    assert f['n_rain_3h'] == pytest.approx(3.0)
 
 
 def test_neighbour_files_and_sync(tmp_path):
@@ -196,3 +214,21 @@ def test_forecast_lists_second_opinions_beside_the_models(synthetic_db, trained,
     assert set(result['guidance']) == {'warm_model', 'cool_model', 'met_eireann'}
     assert result['guidance']['met_eireann'] == result['guidance']['warm_model']
     json.dumps(result)  # the whole result stays plain JSON
+
+
+def test_issued_guidance_runs_to_the_next_local_six_across_a_clock_change(tmp_path):
+    files = GuidanceFiles(tmp_path)
+    hours = pd.date_range('2025-10-25 12:00', periods=72, freq='h', tz='UTC')
+    frame = pd.DataFrame({'source': 'met-eireann', 'model': 'met_eireann', 'lead_days': 0, 'hour': hours,
+                          'temp': 1.0})
+    for col in GUIDANCE_COLUMNS:
+        if col not in frame:
+            frame[col] = np.nan
+    # Clocks go back overnight on 25-26 October: 18:00 to 18:00 local is 25 hours.
+    issued = pd.Timestamp('2025-10-25 18:00').tz_localize('Europe/Dublin')
+    assert keep_issued_guidance(files, frame[GUIDANCE_COLUMNS], issued) == 25
+
+
+def test_a_forecast_that_is_not_xml_is_a_value_error():
+    with pytest.raises(ValueError, match='not XML'):
+        parse_forecast(b'<html><body>Service unavailable')

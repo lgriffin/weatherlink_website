@@ -72,6 +72,20 @@ def _neighbour_sources():
     return [IrishBuoys(), MetEireannObservations()]
 
 
+def _archived_neighbours(args):
+    """The saved neighbour readings around a past evening, or None."""
+    import pandas as pd
+
+    from .adapters.neighbour_files import NeighbourFiles
+    if not args.date:
+        return None
+    day = pd.Timestamp(args.date)
+    files = NeighbourFiles(args.neighbours_dir)
+    frames = [f for f in (files.load(name, f'{day - pd.Timedelta(days=1):%Y-%m-%d}', f'{day:%Y-%m-%d}')
+                          for name in NEIGHBOUR_SOURCES) if len(f)]
+    return pd.concat(frames, ignore_index=True) if frames else None
+
+
 def _join_neighbours(args, hourly, evenings, rows):
     import pandas as pd
 
@@ -148,6 +162,7 @@ def outside_inputs(args) -> dict:
     except (RuntimeError, LookupError, OSError) as err:
         _warn('weather-model guidance', err)
     if not live:
+        out['neighbours'] = _archived_neighbours(args)
         return out
     frames = []
     for source in _neighbour_sources():
@@ -310,10 +325,11 @@ def cmd_issue(args):
 
     record = issue_forecast(run, LedgerFiles(args.ledger), now, narrator=narrator,
                             narrator_name=args.ask, publishers=tuple(publishers), replace=args.replace,
-                            date=date, log=lambda line: print(line, file=sys.stderr))
+                            date=date, log=lambda line: print(line, file=sys.stderr),
+                            on_saved=lambda r: _keep_guidance(
+                                args, r, [used.get('guidance'), *used.get('second_opinions', [])]))
     if record is None:
         return
-    _keep_guidance(args, record, [used.get('guidance'), *used.get('second_opinions', [])])
     metrics = args.out / 'metrics.json'
     if args.with_scores and metrics.exists():
         for publisher in publishers:

@@ -70,9 +70,23 @@ def by_site(neighbours: pd.DataFrame, hours: pd.DatetimeIndex) -> dict[str, pd.D
     return out
 
 
+BUOYS = {'M2', 'M3', 'M4', 'M5', 'M6'}
+
+
 def _group_mean(tables: dict[str, pd.DataFrame], group: str, make) -> pd.Series | None:
+    """The group's mean of a change, which doesn't depend on which sites happen to report."""
     parts = [make(t) for s, t in tables.items() if s in SITES and group in SITES[s].groups]
     return pd.concat(parts, axis=1).mean(axis=1) if parts else None
+
+
+def _group_level(tables: dict[str, pd.DataFrame], group: str, column: str) -> pd.Series | None:
+    """A level (pressure, temperature, wind) for the group, from its land stations only and only
+    when all of them report: each site has its own usual level (buoys windier, the north lower),
+    so a mean over whichever sites report would jump when one drops out."""
+    land = [s for s, site in SITES.items() if group in site.groups and s not in BUOYS]
+    if not land or any(s not in tables for s in land):
+        return None
+    return pd.concat([tables[s][column] for s in land], axis=1).mean(axis=1, skipna=False)
 
 
 def features(neighbours: pd.DataFrame, hours: pd.DatetimeIndex, here_pressure: pd.Series) -> pd.DataFrame:
@@ -88,16 +102,18 @@ def features(neighbours: pd.DataFrame, hours: pd.DatetimeIndex, here_pressure: p
 
     col('n_west_pressure_change_3h', _group_mean(tables, 'west', lambda t: t['pressure'] - t['pressure'].shift(3)))
     col('n_west_pressure_change_12h', _group_mean(tables, 'west', lambda t: t['pressure'] - t['pressure'].shift(12)))
-    west = _group_mean(tables, 'west', lambda t: t['pressure'])
+    west = _group_level(tables, 'west', 'pressure')
     if west is not None:
         out['n_west_minus_here'] = (west.reindex(hours) - here_pressure.reindex(hours)).to_numpy()
-    south = _group_mean(tables, 'south', lambda t: t['pressure'])
-    north = _group_mean(tables, 'north', lambda t: t['pressure'])
+    south = _group_level(tables, 'south', 'pressure')
+    north = _group_level(tables, 'north', 'pressure')
     if south is not None and north is not None:
         out['n_south_minus_north'] = (south - north).reindex(hours)
-    col('n_west_wind', _group_mean(tables, 'west', lambda t: t['wind'].rolling(3, min_periods=2).mean()))
-    col('n_west_temp', _group_mean(tables, 'west', lambda t: t['temp']))
-    rain = [t['rain'].rolling(3, min_periods=3).sum() for t in tables.values() if t['rain'].notna().any()]
+    wind = _group_level(tables, 'west', 'wind')
+    col('n_west_wind', None if wind is None else wind.rolling(3, min_periods=2).mean())
+    col('n_west_temp', _group_level(tables, 'west', 'temp'))
+    # The three hours before this one: the report for this hour is often not out yet at 18:00.
+    rain = [t['rain'].shift(1).rolling(3, min_periods=3).sum() for t in tables.values() if t['rain'].notna().any()]
     if rain:
         out['n_rain_3h'] = pd.concat(rain, axis=1).mean(axis=1).reindex(hours)
     return out.astype(float)
@@ -129,8 +145,8 @@ def sync_neighbours(source, archive, first: str, today: pd.Timestamp | None = No
         if stored.get(month, {}).get('complete'):
             continue
         month_end = month_start + pd.offsets.MonthEnd(0)
-        start = max(month_start, pd.Timestamp(first, tz='UTC'))
-        frame = source.hourly(f'{start:%Y-%m-%d}', f'{min(month_end, last_day):%Y-%m-%d}')
+        # Whole months only, so a month marked complete really is.
+        frame = source.hourly(f'{month_start:%Y-%m-%d}', f'{min(month_end, last_day):%Y-%m-%d}')
         # Late corrections and monthly uploads settle within a few weeks.
         complete = today > month_end + pd.Timedelta(days=35)
         archive.save_month(source.name, month, frame, complete)

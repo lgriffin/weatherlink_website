@@ -23,13 +23,16 @@ WET_MM = 0.2
 def issue_forecast(run: Callable[[], dict], ledger: ForecastLedger, now: pd.Timestamp,
                    narrator: Narrator | None = None, narrator_name: str | None = None,
                    publishers: tuple[Publisher, ...] = (), replace: bool = False, date: str | None = None,
+                   on_saved: Callable[[dict], None] | None = None,
                    log: Callable[[str], None] = lambda _: None) -> dict | None:
     """Make the forecast for `date` (tonight), keep it in the ledger and publish it.
 
     When the evening already has a forecast (and not `replace`), nothing is
     run: the forecast as issued is published again, so a delivery that failed
     is made good, and None is returned. A narrator that fails leaves the
-    forecast without words rather than stopping it.
+    forecast without words rather than stopping it. `on_saved` runs once the
+    record is in the ledger and before it is published, so a publisher that
+    fails can't skip it.
     """
     if date is not None and not replace and _republish(ledger, date, publishers, log):
         return None
@@ -48,6 +51,8 @@ def issue_forecast(run: Callable[[], dict], ledger: ForecastLedger, now: pd.Time
         except (OSError, RuntimeError, KeyError, ValueError) as err:
             log(f'The narrator failed ({err}); sending the numbers without words.')
     ledger.save(record)
+    if on_saved is not None:
+        on_saved(record)
     for publisher in publishers:
         publisher.publish('forecast', record)
     return record

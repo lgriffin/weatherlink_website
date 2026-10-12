@@ -272,8 +272,11 @@ The weather here mostly arrives from the west, so the guided models also see
 what the Atlantic is doing at 18:00: pressure changes over 3 and 12 hours at
 the M3, M4 and M6 buoys, Valentia and Belmullet, the pressure difference
 between there and here, and between the south and north coasts (how windy
-it will be), wind and temperature out west, and rain in the last 3 hours at
-the Met Éireann stations. The sites are grouped rather than used one by one,
+it will be), wind and temperature out west, and rain in the 3 hours before
+at the Met Éireann stations. Levels (pressure, wind, temperature) come from
+the land stations, and only when all of a group's stations report, since
+each site has its own usual level and a buoy dropping out would otherwise
+look like a change in the weather. The sites are grouped rather than used one by one,
 so a few years of evenings is enough to learn from them.
 
 - Buoys: the Marine Institute's ERDDAP server (`IWBNetwork`), CC BY 4.0.
@@ -284,11 +287,12 @@ Readings go to `out/neighbours/<source>/YYYY-MM.csv` (`--neighbours-dir` for
 elsewhere); the site run keeps them in the `weather-history` branch.
 
 `issue` also asks Met Éireann's own point forecast what it expects tonight
-and tomorrow, and lists it next to the other models in the forecast and the
-brief. It keeps no archive, so every forecast saves the guidance it used,
+and tomorrow, and keeps it next to the other models in the forecast record
+(`guidance`). It keeps no archive, so every forecast saves the guidance it used,
 as issued, under `guidance/<source>/lead0/`, and `verify` scores Met Éireann
 alongside the rest. Their licence asks that a site showing their forecasts
-also shows their current warnings; the Forecast page does.
+also shows their current warnings, so the site shows their numbers only on
+the Forecast page, which carries the warnings.
 
 ## Tests
 
