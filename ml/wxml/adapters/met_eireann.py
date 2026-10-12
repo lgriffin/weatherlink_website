@@ -28,7 +28,7 @@ import pandas as pd
 
 from ..forecasting.domain import GUIDANCE_COLUMNS, Location, empty_guidance
 from ..forecasting.neighbours import NEIGHBOUR_COLUMNS, empty_neighbours
-from .http import get_bytes
+from .http import Unreachable, get_bytes
 
 HISTORY_URL = 'https://cli.fusio.net/cli/climate_data/webdata/hly{number}.zip'
 TODAY_URL = 'https://prodapi.metweb.ie/observations/{slug}/today'
@@ -81,6 +81,8 @@ class MetEireannObservations:
         for site in self.stations:
             try:
                 body = self._fetch(self._today_url.format(slug=site))
+            except Unreachable:
+                break  # the service is down: asking for the other stations would only wait longer
             except RuntimeError:
                 continue  # one station down shouldn't lose the others
             frames.append(parse_today(json.loads(body), site))

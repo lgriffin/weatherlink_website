@@ -232,3 +232,15 @@ def test_issued_guidance_runs_to_the_next_local_six_across_a_clock_change(tmp_pa
 def test_a_forecast_that_is_not_xml_is_a_value_error():
     with pytest.raises(ValueError, match='not XML'):
         parse_forecast(b'<html><body>Service unavailable')
+
+
+def test_todays_observations_stop_asking_once_the_service_is_unreachable():
+    from wxml.adapters.http import Unreachable
+    asked = []
+
+    def fetch(url):
+        asked.append(url)
+        raise Unreachable('Could not reach Met Éireann: Network is unreachable')
+
+    frame = MetEireannObservations(fetch=fetch).recent(24)
+    assert frame.empty and len(asked) == 1

@@ -11,7 +11,11 @@ USER_AGENT = 'weatherlink_website-wxml (+https://github.com/lgriffin/weatherlink
 RETRY_CODES = (429, 500, 502, 503, 504)
 
 
-def get_bytes(url: str, what: str, timeout: float = 120, attempts: int = 4,
+class Unreachable(RuntimeError):
+    """The service could not be reached at all (as opposed to answering with an error)."""
+
+
+def get_bytes(url: str, what: str, timeout: float = 60, attempts: int = 3,
               sleep: Callable[[float], None] = time.sleep) -> bytes:
     """The body of `url`. Errors name `what`, never the URL (it can hold the station's position)."""
     for attempt in range(1, attempts + 1):
@@ -28,5 +32,5 @@ def get_bytes(url: str, what: str, timeout: float = 120, attempts: int = 4,
             if attempt < attempts:
                 sleep(5 * attempt)
                 continue
-            raise RuntimeError(f'Could not reach {what}: {getattr(err, "reason", err)}') from None
+            raise Unreachable(f'Could not reach {what}: {getattr(err, "reason", err)}') from None
     raise AssertionError('unreachable')

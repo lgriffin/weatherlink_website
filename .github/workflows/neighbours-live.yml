@@ -47,7 +47,15 @@ jobs:
           recent = IrishBuoys().recent(24)
           print(f'last 24 h: {len(recent)} readings from {recent["site"].nunique()} buoys')
           PY
+      - name: Can the runner reach Met Éireann?
+        if: ${{ !cancelled() }}
+        run: |
+          for host in cli.fusio.net prodapi.metweb.ie openaccess.pf.api.met.ie; do
+            echo "== $host"; getent ahosts "$host" | awk '{print $1}' | sort -u
+            curl -sS -o /dev/null -w 'HTTP %{http_code} via %{remote_ip} in %{time_total}s\n' --max-time 30 "https://$host/" || true
+          done
       - name: Met Éireann station history (climate data)
+        if: ${{ !cancelled() }}
         run: |
           python - <<'PY'
           import pandas as pd
@@ -61,6 +69,7 @@ jobs:
           assert frame['temp'].between(-15, 35).mean() > 0.9, 'temperatures look wrong'
           PY
       - name: Met Éireann today's observations
+        if: ${{ !cancelled() }}
         run: |
           python - <<'PY'
           from wxml.adapters.met_eireann import MetEireannObservations
@@ -70,6 +79,7 @@ jobs:
           assert frame['pressure'].dropna().between(940, 1060).all(), 'pressures look wrong'
           PY
       - name: Met Éireann point forecast
+        if: ${{ !cancelled() }}
         run: |
           python - <<'PY'
           from wxml.adapters.met_eireann import MetEireannForecastSource
