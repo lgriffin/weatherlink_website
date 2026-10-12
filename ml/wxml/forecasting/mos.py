@@ -116,8 +116,8 @@ def hourly_features(guidance: pd.DataFrame, hours: pd.DatetimeIndex) -> pd.DataF
     for g in by_model(guidance).values():
         ahead = pd.concat([g['rain'].shift(-k) for k in range(1, 7)], axis=1)
         rain6.append(ahead.sum(axis=1, min_count=6).reindex(hours))
-        cloud6.append(pd.concat([g['cloud'].shift(-k) for k in range(1, 7)], axis=1)
-                      .mean(axis=1).where(ahead.notna().sum(axis=1) >= 5).reindex(hours))
+        cloud = pd.concat([g['cloud'].shift(-k) for k in range(1, 7)], axis=1)
+        cloud6.append(cloud.mean(axis=1).where(cloud.notna().sum(axis=1) >= 5).reindex(hours))
         temp24.append(g['temp'].shift(-24).reindex(hours))
     out = pd.DataFrame(index=hours, columns=GUIDANCE_HOURLY, dtype=float)
     if not rain6:

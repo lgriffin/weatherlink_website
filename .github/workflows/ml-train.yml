@@ -58,7 +58,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git clone --quiet --depth 1 --branch weather-history "$remote" history
+          git clone --quiet --depth 1 --branch weather-history "$remote" history \
+            || { echo "::warning::No weather-history branch yet; fetching guidance afresh."; mkdir -p history; }
 
       - name: Fetch new guidance months
         # Months already saved stay usable if Open-Meteo is slow today; the next run fetches the rest.

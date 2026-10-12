@@ -114,9 +114,16 @@ def sync_guidance(source: ForecastSource, archive: GuidanceArchive, location: Lo
         frames, done = [], []
         for model in wanted:
             try:
-                frames.append(source.as_issued(location, [model], start, end, lead_days))
-                done.append(model)
+                got = source.as_issued(location, [model], start, end, lead_days)
                 failures = 0
+                if got.empty:
+                    # Nothing for this month (yet): leave it out, so a later sync asks again.
+                    log(f'{month} {model}: no guidance returned')
+                    if kept is not None:
+                        frames.append(kept[kept['model'] == model])
+                    continue
+                frames.append(got)
+                done.append(model)
             except RuntimeError as err:
                 failures += 1
                 log(f'{month} {model}: {err}')

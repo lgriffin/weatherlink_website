@@ -145,6 +145,28 @@ def test_sync_keeps_going_past_one_failing_model_but_not_a_dead_source(tmp_path)
     assert files.months('fake', 1)['2025-01'] == {'models': {'a', 'b'}, 'complete': True}
 
 
+def test_sync_does_not_count_a_model_that_returned_nothing(tmp_path):
+    class Empty(MonthSource):
+        def as_issued(self, location, models, start, end, lead_days=1):
+            if models[0] == 'b':
+                return empty_guidance()
+            return super().as_issued(location, models, start, end, lead_days)
+
+    files = GuidanceFiles(tmp_path)
+    sync_guidance(Empty(), files, HERE, ['a', 'b'], first='2025-01-01', today=pd.Timestamp('2025-06-10', tz='UTC'))
+    assert files.months('fake', 1)['2025-01'] == {'models': {'a'}, 'complete': False}
+
+
+def test_cloud_ahead_counts_cloud_hours_not_rain_hours():
+    hours = pd.date_range('2025-07-01', periods=12, freq='h', tz='UTC')
+    rain = np.zeros(12)
+    cloud = np.full(12, 50.0)
+    rain[1:7] = np.nan        # no rain figures for the next six hours, but cloud is all there
+    out = hourly_features(rows('a', hours, rain=rain, cloud=cloud), hours[:1])
+    assert out['g_cloud_6h'].iloc[0] == pytest.approx(50.0)
+    assert np.isnan(out['g_rain_6h'].iloc[0])
+
+
 def test_guided_models_learn_the_correction(trained):
     out, report = trained
     tasks = report['tasks']
