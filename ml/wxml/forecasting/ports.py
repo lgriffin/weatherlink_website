@@ -9,10 +9,11 @@ Ports with adapters today:
 - ForecastSource: guidance from weather models elsewhere (Open-Meteo).
 - GuidanceArchive: guidance as it was issued, kept by month (CSV files).
 - Narrator: turns a brief into words (Ollama).
+- ForecastLedger: every issued forecast, kept for scoring once the truth is in (JSON files).
+- Publisher: sends outputs to the site (its ingest API, or files the site run picks up).
 
 Planned (see ADR 007): NeighbourObservations (Met Éireann stations, Irish
-weather buoys), ModelRunner (LightGBM today, swappable), ForecastLedger
-(every issued forecast, for scoring later), Publisher (the site's ingest API).
+weather buoys), ModelRunner (LightGBM today, swappable), NowcastSource (radar).
 """
 
 from __future__ import annotations
@@ -73,4 +74,25 @@ class GuidanceArchive(Protocol):
 class Narrator(Protocol):
     def write(self, brief: str) -> str:
         """The written forecast for a brief. States only numbers the brief gives."""
+        ...
+
+
+@runtime_checkable
+class ForecastLedger(Protocol):
+    def save(self, record: dict) -> None:
+        """Keep one issued forecast, replacing any earlier one for the same evening (record['evening']['date'])."""
+        ...
+
+    def get(self, date: str) -> dict | None:
+        ...
+
+    def dates(self) -> list[str]:
+        """Every evening with a forecast, oldest first."""
+        ...
+
+
+@runtime_checkable
+class Publisher(Protocol):
+    def publish(self, kind: str, payload: dict) -> None:
+        """Send one output ('forecast', 'model-scores', ...) to the site."""
         ...
