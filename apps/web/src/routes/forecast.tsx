@@ -146,13 +146,13 @@ const LEVEL_LABEL: Record<WeatherWarningDto['level'], string> = {
 
 function Warnings({ warnings }: { warnings: ForecastResponse['warnings'] }) {
   return (
-    <ChartCard title="Met Éireann warnings" subtitle="in force for Ireland">
+    <ChartCard title="Met Éireann warnings" subtitle="in force or coming up, for Ireland">
       {warnings === null ? (
         <p className="outputs-empty">
           Couldn&rsquo;t reach Met Éireann for warnings. Check <a href="https://www.met.ie/warnings" target="_blank" rel="noreferrer">met.ie/warnings</a>.
         </p>
       ) : warnings.length === 0 ? (
-        <p className="outputs-empty">No weather warnings in force.</p>
+        <p className="outputs-empty">No weather warnings in force or coming up.</p>
       ) : (
         <ul className="forecast-warnings">
           {warnings.map((w, i) => (

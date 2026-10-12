@@ -22,7 +22,7 @@ function fakeFetch(body: unknown, status = 200) {
 describe('MetEireannWarnings', () => {
   const now = () => Date.parse('2026-10-12T15:00:00Z');
 
-  it('reads the warnings in force and drops expired ones', async () => {
+  it('reads the warnings in force or coming up and drops expired ones', async () => {
     const { fetch } = fakeFetch(FEED);
     const warnings = await new MetEireannWarnings({ fetch, now }).current();
     expect(warnings).toHaveLength(1);
@@ -39,6 +39,48 @@ describe('MetEireannWarnings', () => {
     t += 61_000;
     await source.current();
     expect(calls).toHaveLength(2);
+  });
+
+  it('drops a kept warning once it expires', async () => {
+    const { fetch } = fakeFetch(FEED);
+    let t = now();
+    const source = new MetEireannWarnings({ fetch, now: () => t, cacheMs: 24 * 3_600_000 });
+    expect(await source.current()).toHaveLength(1);
+    t = Date.parse('2026-10-13T05:01:00Z');
+    expect(await source.current()).toHaveLength(0);
+  });
+
+  it('shares one request between visitors arriving together', async () => {
+    let release: () => void = () => {};
+    let calls = 0;
+    const fetch = async () => {
+      calls += 1;
+      await new Promise<void>((r) => { release = r; });
+      return { ok: true, status: 200, json: async () => FEED };
+    };
+    const source = new MetEireannWarnings({ fetch, now });
+    const both = Promise.all([source.current(), source.current()]);
+    await Promise.resolve();
+    release();
+    const [a, b] = await both;
+    expect(calls).toBe(1);
+    expect(a).toEqual(b);
+  });
+
+  it('does not ask again for a while after a failure', async () => {
+    const { fetch, calls } = fakeFetch(null, 503);
+    let t = now();
+    const source = new MetEireannWarnings({ fetch, now: () => t, retryMs: 60_000 });
+    await expect(source.current()).rejects.toThrow('503');
+    await expect(source.current()).rejects.toThrow('a moment ago');
+    t += 61_000;
+    await expect(source.current()).rejects.toThrow('503');
+    expect(calls).toHaveLength(2);
+  });
+
+  it('treats a feed that is not a list as unreachable, not as no warnings', async () => {
+    const { fetch } = fakeFetch({ error: 'maintenance' });
+    await expect(new MetEireannWarnings({ fetch, now }).current()).rejects.toThrow('not a list');
   });
 
   it('says when Met Éireann is down', async () => {

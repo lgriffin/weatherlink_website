@@ -7,10 +7,14 @@ export interface ForecastRouteDeps {
 }
 
 export function registerForecastRoutes(app: FastifyInstance, deps: ForecastRouteDeps): void {
-  app.get('/api/v1/forecast', async (_request, reply) => {
+  app.get('/api/v1/forecast', async (request, reply) => {
     const { forecast, warnings } = await deps.getForecast.execute();
     // Uploads were checked on the way in; anything older that no longer fits is left out, not sent broken.
     const payload = forecast ? ForecastPayloadSchema.safeParse(forecast.payload) : null;
+    if (forecast && payload && !payload.success) {
+      request.log.warn({ source: forecast.source, receivedAt: forecast.receivedAt.toISOString(), issues: payload.error.issues },
+        'Latest forecast no longer fits the contract; not shown');
+    }
     const body: ForecastResponse = {
       forecast: forecast && payload?.success
         ? { source: forecast.source, receivedAt: forecast.receivedAt.toISOString(), stale: forecast.stale, payload: payload.data }

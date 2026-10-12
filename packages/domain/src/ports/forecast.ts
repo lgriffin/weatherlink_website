@@ -6,6 +6,6 @@ export interface ForecastRepository {
 }
 
 export interface WarningsSource {
-  /** Warnings in force now. Throws when the issuer can't be reached. */
+  /** Warnings in force now or issued for later, not expired ones. Throws when the issuer can't be reached. */
   current(): Promise<WeatherWarning[]>;
 }

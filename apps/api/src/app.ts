@@ -106,7 +106,10 @@ export async function buildApp(env: Env) {
   const getAnnualStats = new GetAnnualStats(stationRepo, dailySummaryRepo, clock, env.APP_TIMEZONE);
   const recordIngestReport = new RecordIngestReport(ingestReportRepo, clock);
   const getIngestOverview = new GetIngestOverview(ingestReportRepo);
-  const getForecast = new GetForecast(new IngestForecastRepository(ingestReportRepo), new MetEireannWarnings(), clock);
+  const getForecast = new GetForecast(new IngestForecastRepository(ingestReportRepo), new MetEireannWarnings(), clock, {
+    timeZone: env.APP_TIMEZONE,
+    onWarningsError: (err) => logger.warn({ err }, 'Could not fetch Met Éireann warnings'),
+  });
 
   const app = Fastify({ logger: false });
 

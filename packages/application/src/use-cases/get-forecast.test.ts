@@ -41,6 +41,24 @@ describe('GetForecast', () => {
     expect(result.warnings).toBeNull();
   });
 
+  it('judges freshness by the evening it was made for, in local time', async () => {
+    const reports = new InMemoryIngestReportRepository();
+    // Re-sent this evening, but made for last night.
+    await reports.save({ kind: 'forecast', source: 'actions', receivedAt: new Date('2026-10-12T18:10:00Z'),
+                         payload: { evening: { date: '2026-10-11' } } });
+    const repo = new IngestForecastRepository(reports);
+    const at = (iso: string) => new GetForecast(repo, warningsSource([]), new FakeClock(new Date(iso)), { timeZone: 'Europe/Dublin' });
+    expect((await at('2026-10-12T18:30:00Z').execute()).forecast?.stale).toBe(false); // 19:30 local: tonight's not due yet
+    expect((await at('2026-10-12T19:30:00Z').execute()).forecast?.stale).toBe(true); // 20:30 local: overdue
+  });
+
+  it('logs why the warnings could not be fetched', async () => {
+    const errors: unknown[] = [];
+    await new GetForecast(new IngestForecastRepository(new InMemoryIngestReportRepository()),
+      warningsSource(new Error('timeout')), new FakeClock(new Date()), { onWarningsError: (e) => errors.push(e) }).execute();
+    expect(errors).toHaveLength(1);
+  });
+
   it('has nothing to show before the first forecast', async () => {
     const result = await new GetForecast(
       new IngestForecastRepository(new InMemoryIngestReportRepository()), warningsSource([]), new FakeClock(new Date()),
