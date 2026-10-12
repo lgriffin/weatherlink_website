@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import math
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -53,20 +54,34 @@ DEFAULT_MODELS = ['ecmwf_ifs025', 'ukmo_seamless', 'icon_seamless', 'knmi_harmon
 FetchJson = Callable[[str], dict]
 
 
-def _fetch_json(url: str, timeout: float = 60) -> dict:
+def _fetch_once(url: str, timeout: float) -> dict:
     req = urllib.request.Request(url, headers={'User-Agent': 'weatherlink_website-wxml'})
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read())
-    except urllib.error.HTTPError as err:
-        # Open-Meteo explains bad requests in the body. Say why, without the URL (it holds the location).
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read())
+
+
+def _fetch_json(url: str, timeout: float = 120, attempts: int = 4,
+                sleep: Callable[[float], None] = time.sleep) -> dict:
+    """GET and parse JSON, trying again after a pause when Open-Meteo is busy or the network blips."""
+    for attempt in range(1, attempts + 1):
         try:
-            reason = json.loads(err.read()).get('reason', '')
-        except Exception:  # noqa: BLE001
-            reason = ''
-        raise RuntimeError(f'Open-Meteo answered {err.code}: {reason or err.reason}') from None
-    except urllib.error.URLError as err:
-        raise RuntimeError(f'Could not reach Open-Meteo: {err.reason}') from None
+            return _fetch_once(url, timeout)
+        except urllib.error.HTTPError as err:
+            if err.code in (429, 500, 502, 503, 504) and attempt < attempts:
+                sleep(5 * attempt)
+                continue
+            # Open-Meteo explains bad requests in the body. Say why, without the URL (it holds the location).
+            try:
+                reason = json.loads(err.read()).get('reason', '')
+            except Exception:  # noqa: BLE001
+                reason = ''
+            raise RuntimeError(f'Open-Meteo answered {err.code}: {reason or err.reason}') from None
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as err:
+            if attempt < attempts:
+                sleep(5 * attempt)
+                continue
+            raise RuntimeError(f'Could not reach Open-Meteo: {getattr(err, "reason", err)}') from None
+    raise AssertionError('unreachable')
 
 
 class OpenMeteoForecastSource:

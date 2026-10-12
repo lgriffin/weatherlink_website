@@ -61,6 +61,8 @@ jobs:
           git clone --quiet --depth 1 --branch weather-history "$remote" history
 
       - name: Fetch new guidance months
+        # Months already saved stay usable if Open-Meteo is slow today; the next run fetches the rest.
+        continue-on-error: true
         working-directory: ml
         run: python -m wxml --db ../data/weather.db --guidance-dir ../history/guidance guidance-sync
 
