@@ -229,7 +229,7 @@ history than the station has.
 
 In GitHub Actions, the `ml-train` workflow does all of this on the real archive
 every Monday, on demand, and for any change to `ml/wxml`, and shows the table
-in the run summary. It keeps the guidance in the `weather-history` branch.
+in the run summary.
 
 ## Tests
 

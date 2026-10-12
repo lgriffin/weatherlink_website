@@ -5,9 +5,9 @@ name: ml-train
 # against the raw guidance, climatology and persistence.
 #
 # The database comes from the hourly site run's cache (pages.yml), so no
-# WeatherLink secrets are needed. As-issued guidance is kept in the
-# weather-history branch under guidance/; on main the months fetched here are
-# saved back there. The station's position is read from the database and sent
+# WeatherLink secrets are needed. As-issued guidance is read from the
+# weather-history branch (guidance/), which the site run keeps up to date;
+# months it lacks are fetched here but not saved. The station's position is read from the database and sent
 # only to Open-Meteo, rounded to about 1 km; it is never printed.
 
 on:
@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # save new guidance months to the weather-history branch (main only)
+  contents: read
 
 concurrency:
   group: ml-train-${{ github.ref }}
@@ -85,21 +85,3 @@ jobs:
         with:
           name: metrics
           path: ml/out/metrics.json
-
-      - name: Save new guidance to the history branch
-        if: ${{ github.ref == 'refs/heads/main' }}
-        working-directory: history
-        run: |
-          git add guidance
-          if git diff --cached --quiet; then
-            echo "Guidance unchanged."
-            exit 0
-          fi
-          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-            commit --quiet -m "Guidance as issued, up to $(date -u -d yesterday +%F)"
-          # The hourly site run pushes here too; its files never overlap these.
-          for attempt in 1 2 3 4; do
-            git pull --quiet --rebase origin weather-history && git push --quiet origin HEAD:weather-history && exit 0
-            sleep $((attempt * 5))
-          done
-          exit 1
