@@ -9,6 +9,9 @@
   guidance-check  how well each of those models has done at the station
   guidance-sync   save their past forecasts, as issued, for training (MOS)
   scores       the last training run's scores as a Markdown table
+  issue        make tonight's forecast, keep it in the ledger and send it to the site
+  verify       score the ledger's forecasts against what happened
+  due          exit 0 when tonight's forecast can be made and hasn't been yet
 """
 
 from __future__ import annotations
@@ -23,15 +26,20 @@ ML_DIR = Path(__file__).resolve().parent.parent
 REPO_DIR = ML_DIR.parent
 
 
-def default_db() -> Path:
-    configured = os.environ.get('DATABASE_PATH')
-    if not configured:
+def setting(name: str) -> str | None:
+    """An environment variable, or its line in the repo's .env."""
+    value = os.environ.get(name)
+    if not value:
         env_file = REPO_DIR / '.env'
         if env_file.exists():
             for line in env_file.read_text().splitlines():
-                if line.strip().startswith('DATABASE_PATH='):
-                    configured = line.split('=', 1)[1].strip().strip('"\'')
-    path = Path(configured or './data/weather.db')
+                if line.strip().startswith(f'{name}='):
+                    value = line.split('=', 1)[1].strip().strip('"\'')
+    return value or None
+
+
+def default_db() -> Path:
+    path = Path(setting('DATABASE_PATH') or './data/weather.db')
     return path if path.is_absolute() else (REPO_DIR / path).resolve()
 
 
@@ -204,6 +212,83 @@ def cmd_scores(args):
     print(markdown(json.loads(path.read_text())), end='')
 
 
+def _publishers(targets: list[str]):
+    from .adapters.publishers import FilePublisher, HttpPublisher
+    out = []
+    for target in targets:
+        if target == 'site':
+            url, token = setting('SITE_URL'), setting('INGEST_TOKEN')
+            if not url or not token:
+                raise SystemExit('Set SITE_URL and INGEST_TOKEN (environment or .env) to publish to the site.')
+            import socket
+            out.append(HttpPublisher(url, token, setting('INGEST_SOURCE') or socket.gethostname().split('.')[0]))
+        else:
+            out.append(FilePublisher(target))
+    return out
+
+
+def cmd_issue(args):
+    import pandas as pd
+
+    from .adapters.ledger_files import LedgerFiles
+    from .forecasting.ledger import issue_forecast
+    from .predict import forecast
+    publishers = _publishers(args.publish)
+    narrator = None
+    if args.ask:
+        from .adapters.ollama_narrator import OllamaNarrator
+        narrator = OllamaNarrator(args.ask)
+
+    def run():
+        return forecast(args.db, args.out / 'models', args.station, args.date, guidance=predict_guidance(args))
+
+    record = issue_forecast(run, LedgerFiles(args.ledger), pd.Timestamp.now(tz='UTC'), narrator=narrator,
+                            narrator_name=args.ask, publishers=tuple(publishers), replace=args.replace,
+                            log=lambda line: print(line, file=sys.stderr))
+    if record is None:
+        return
+    metrics = args.out / 'metrics.json'
+    if args.with_scores and metrics.exists():
+        for publisher in publishers:
+            publisher.publish('model-scores', json.loads(metrics.read_text()))
+    print(json.dumps(record, indent=2, ensure_ascii=False) if args.json else record['brief'])
+    if record.get('forecast') and not args.json:
+        print('\n' + record['forecast'])
+
+
+def cmd_due(args):
+    import pandas as pd
+
+    from .adapters.ledger_files import LedgerFiles
+    from .data import load_hourly
+    station, hourly = load_hourly(args.db, args.station)
+    today = args.today or f'{pd.Timestamp.now(tz=station.timezone):%Y-%m-%d}'
+    if LedgerFiles(args.ledger).get(today) is not None:
+        raise SystemExit(f'{today} already has a forecast.')
+    # The forecast is issued from the 17:00-18:00 local hour.
+    issue = pd.Timestamp(today).replace(hour=17).tz_localize(station.timezone).tz_convert('UTC')
+    if issue not in hourly.index or bool(hourly.loc[issue, 'outage']):
+        raise SystemExit(f"No 17:00-18:00 reading for {today} yet.")
+    print(f'{today}: due')
+
+
+def cmd_verify(args):
+    import pandas as pd
+
+    from .adapters.ledger_files import LedgerFiles
+    from .forecasting.ledger import ledger_scores, verify_ledger
+    ledger = LedgerFiles(args.ledger)
+    if not ledger.dates():
+        print(f'No forecasts in {args.ledger} yet.')
+        return
+    _, _, evenings, _ = load_tables(args)
+    done = verify_ledger(ledger, evenings, pd.Timestamp.now(tz='UTC'))
+    scores = ledger_scores(ledger, since=args.since)
+    (args.ledger / 'scores.json').write_text(json.dumps(scores, indent=1) + '\n')
+    print(f'Verified {len(done)} new evening(s). Scores over {scores["evenings"]} verified evenings:')
+    print(json.dumps(scores, indent=1))
+
+
 def _local(ref: str | None) -> str | None:
     """Local paths become absolute, since Ollama reads them relative to the Modelfile."""
     if ref and Path(ref).exists():
@@ -291,9 +376,40 @@ def main(argv=None):
     p = sub.add_parser('scores', help="the last training run's scores as a Markdown table")
     p.set_defaults(func=cmd_scores)
 
+    def ledger_arg(p):
+        p.add_argument('--ledger', type=Path, help='where issued forecasts are kept (default: <out>/ledger)')
+
+    p = sub.add_parser('issue', help="make tonight's forecast, keep it and send it to the site")
+    ledger_arg(p)
+    p.add_argument('--date', help='evening to forecast from (default: the latest)')
+    p.add_argument('--ask', metavar='MODEL', help='an Ollama model to write the words')
+    p.add_argument('--publish', action='append', default=[], metavar='site|DIR',
+                   help="'site' posts to SITE_URL with INGEST_TOKEN; a folder gets <kind>.json files (repeatable)")
+    p.add_argument('--with-scores', action='store_true', help="also publish the last training run's scores")
+    p.add_argument('--replace', action='store_true', help='replace a forecast already kept for that evening')
+    p.add_argument('--json', action='store_true', help='print the whole record')
+    p.add_argument('--guidance', choices=['live', 'archive', 'none'], default='live',
+                   help='weather-model guidance: the latest runs (default), the saved ones, or none')
+    p.add_argument('--lat', type=float, help=argparse.SUPPRESS)
+    p.add_argument('--lon', type=float, help=argparse.SUPPRESS)
+    p.add_argument('--elevation', type=float, help=argparse.SUPPRESS)
+    p.set_defaults(func=cmd_issue)
+
+    p = sub.add_parser('due', help="exit 0 when tonight's forecast can be made and hasn't been yet")
+    ledger_arg(p)
+    p.add_argument('--today', help=argparse.SUPPRESS)
+    p.set_defaults(func=cmd_due)
+
+    p = sub.add_parser('verify', help="score the ledger's forecasts against what happened")
+    ledger_arg(p)
+    p.add_argument('--since', help='only score evenings from this date')
+    p.set_defaults(func=cmd_verify)
+
     args = parser.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
     args.guidance_dir = args.guidance_dir or args.out / 'guidance'
+    if hasattr(args, 'ledger'):
+        args.ledger = args.ledger or args.out / 'ledger'
     args.func(args)
 
 

@@ -10,6 +10,11 @@
 # gone, the database is rebuilt from it instead of downloading everything
 # again, and it can be cloned onto a NAS or synced to Drive as it is.
 #
+# Once a day, the first run after 18:00 local time also makes tonight's
+# forecast (ml/): it saves the weather models' past runs, retrains, issues the
+# forecast into the ledger (history branch, forecasts/), scores past ones and
+# loads the forecast and model scores into the database for the site.
+#
 # One-time setup: Settings > Pages > Source: "GitHub Actions", and repository
 # secrets WEATHERLINK_API_KEY and WEATHERLINK_API_SECRET. Optionally set the
 # repository variable WEATHERLINK_STATION_ID if the account has several stations,
@@ -22,6 +27,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      forecast:
+        description: Make the forecast now if it is due, even before 18:00
+        type: boolean
+        default: false
 
 permissions:
   contents: write # push the weather-history branch
@@ -105,6 +115,43 @@ jobs:
       - name: List wind sensor outages
         run: pnpm archive:gaps --measurement wind.speed --min-hours 24
 
+      - name: Is tonight's forecast due?
+        id: forecast
+        run: |
+          hour=$(TZ="$APP_TIMEZONE" date +%-H)
+          if [ "$hour" -ge 18 ] || [ "${{ inputs.forecast }}" = "true" ]; then
+            echo "evening=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
+        if: ${{ steps.forecast.outputs.evening == 'true' }}
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: ml/requirements*.txt
+
+      - name: Forecast tonight
+        if: ${{ steps.forecast.outputs.evening == 'true' }}
+        # A forecast problem must never stop the site publishing.
+        continue-on-error: true
+        working-directory: ml
+        run: |
+          pip install -q -r requirements.txt
+          ledger="$GITHUB_WORKSPACE/history/forecasts"
+          if ! python -m wxml due --ledger "$ledger"; then exit 0; fi
+          guidance="$GITHUB_WORKSPACE/history/guidance"
+          python -m wxml --guidance-dir "$guidance" guidance-sync || echo "::warning::Open-Meteo guidance sync failed; training on what is saved."
+          python -m wxml --guidance-dir "$guidance" train
+          outputs="$GITHUB_WORKSPACE/site-outputs"
+          python -m wxml --guidance-dir "$guidance" issue --ledger "$ledger" --publish "$outputs" --with-scores
+          python -m wxml verify --ledger "$ledger"
+          cd "$GITHUB_WORKSPACE"
+          args=()
+          for kind in forecast model-scores; do
+            [ -f "site-outputs/$kind.json" ] && args+=("$kind" "$GITHUB_WORKSPACE/site-outputs/$kind.json")
+          done
+          if [ ${#args[@]} -gt 0 ]; then pnpm --filter @weather/api ingest-file "${args[@]}"; fi
+
       - name: Save the history to the weather-history branch
         if: ${{ !cancelled() }}
         run: |
@@ -117,7 +164,12 @@ jobs:
           fi
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit --quiet -m "History up to $(date -u -d yesterday +%F)"
-          git push --quiet origin HEAD:weather-history
+          for attempt in 1 2 3 4; do
+            git push --quiet origin HEAD:weather-history && exit 0
+            sleep $((attempt * 5))
+            git pull --quiet --rebase origin weather-history
+          done
+          exit 1
 
       - name: Save station database
         if: ${{ !cancelled() && hashFiles('data/weather.db') != '' }}

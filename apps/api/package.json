@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
-    "snapshot": "tsx --env-file-if-exists=../../.env src/snapshot.ts"
+    "snapshot": "tsx --env-file-if-exists=../../.env src/snapshot.ts",
+    "ingest-file": "tsx --env-file-if-exists=../../.env src/ingest-file.ts"
   },
   "dependencies": {
     "fastify": "^5.0.0",

@@ -231,6 +231,37 @@ In GitHub Actions, the `ml-train` workflow does all of this on the real archive
 every Monday, on demand, and for any change to `ml/wxml`, and shows the table
 in the run summary.
 
+## 7. Issuing forecasts and keeping score (the ledger)
+
+```bash
+python -m wxml issue --publish site --ask station-forecaster   # make, keep and send tonight's forecast
+python -m wxml verify                                          # score past forecasts now the truth is in
+```
+
+`issue` runs the saved models (with today's guidance), keeps the whole
+forecast in the ledger (`out/ledger/YYYY/YYYY-MM-DD.json`: the numbers, which
+models made them, what each weather model said, the brief and the words) and
+publishes it. It issues each evening once; `--replace` overrides that.
+
+- `--publish site` posts to the site's ingest API with `SITE_URL` and
+  `INGEST_TOKEN`; `--publish DIR` writes `forecast.json` there instead.
+  `--with-scores` sends the last training scores too.
+- `--ask MODEL` has a local Ollama model write the words. If Ollama is not
+  running, the numbers still go out.
+
+`verify` adds what actually happened to every forecast whose night and next day
+are known, and writes `scores.json` in the ledger: the issued forecasts' misses
+next to each weather model's on the same evenings. Unlike the training scores,
+these come from forecasts exactly as they went out.
+
+In GitHub Actions, the hourly site run does all of this once a day, on its
+first run after 18:00: it saves new guidance, retrains, issues, verifies and
+loads the forecast into the site. Guidance and the ledger live in the
+`weather-history` branch (`guidance/`, `forecasts/`). Run the "Publish site"
+workflow by hand with "Make the forecast now" ticked to try it before 18:00.
+On your own machine, `scripts/spark-evening.sh` does the same with your Ollama
+model.
+
 ## Tests
 
 ```bash
@@ -257,5 +288,6 @@ brief. The scores on your real data will be different.
 | `wxml/predict.py` | Runs saved models on the latest data |
 | `wxml/ollama.py` | A tiny client for your local Ollama |
 | `wxml/forecasting/` | The core (ADR 007): guidance types, the ports, the guidance use cases, and `mos.py` (guidance as model inputs). No I/O |
-| `wxml/adapters/` | One module per port adapter: SQLite store, Open-Meteo guidance, guidance files, Ollama narrator |
+| `wxml/adapters/` | One module per port adapter: SQLite store, Open-Meteo guidance, guidance files, ledger files, publishers (site API or folder), Ollama narrator |
 | `wxml/report.py` | The training scores as a Markdown table |
+| `wxml/forecasting/ledger.py` | Issuing a forecast, verifying it, and the ledger's scores |

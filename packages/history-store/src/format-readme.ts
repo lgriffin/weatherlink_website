@@ -13,6 +13,8 @@ folder; nothing here depends on that code to be understood.
     stations/<id>/archive/YYYY/MM/YYYY-MM-DD.ndjson.gz
                                                    raw archive for one UTC day
     stations/<id>/daily/YYYY/YYYY-MM.csv           daily summaries for one month (local days)
+    guidance/open-meteo/lead1/YYYY-MM.csv          weather models' forecasts as issued a day ahead
+    forecasts/YYYY/YYYY-MM-DD.json                 every forecast the station issued (the ledger)
 
 ## Raw archive
 
@@ -39,6 +41,14 @@ m/s, mm, W/m², degrees, percent):
 Daily totals (rain.daily, wind.run, ET) keep the total in \`max\`. An empty
 cell means no data, never zero. \`count\` is the number of readings behind
 the row; days hit by an outage have fewer.
+
+## Forecasts
+
+\`guidance/\` and \`forecasts/\` are written by the forecasting code in \`ml/\`
+of the site's repo. Guidance has one row per weather model and UTC hour
+(Open-Meteo, CC BY 4.0), in the same units as the summaries. Each forecast
+file holds the numbers as issued at 18:00, the brief and any words, and,
+once the night and next day are known, a \`verification\` with what happened.
 
 ## Moving it somewhere else
 

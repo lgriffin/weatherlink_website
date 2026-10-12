@@ -17,6 +17,9 @@ pnpm -s archive:rebuild
 
 ask=()
 if [ -n "${FORECAST_MODEL:-}" ]; then ask=(--ask "$FORECAST_MODEL"); fi
-(cd ml && .venv/bin/python -m wxml predict --json "${ask[@]}") > "$out/forecast.json"
-
-scripts/push-output.sh forecast "$out/forecast.json"
+cd ml
+# Keep the weather models' past runs, then forecast, keep it in the ledger and send it to the site.
+.venv/bin/python -m wxml guidance-sync || echo "Guidance sync failed; forecasting with what is saved." >&2
+.venv/bin/python -m wxml issue --publish site "${ask[@]}"
+# Score earlier forecasts now that their nights are known.
+.venv/bin/python -m wxml verify
