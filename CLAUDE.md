@@ -32,7 +32,7 @@ apps/ → http-adapter → application → domain ← persistence-adapter ← we
 
 ## ML
 
-- `ml/` — Python (not part of the pnpm workspace): LightGBM forecast models and the Ollama fine-tuning set, reading SQLite read-only. Every number comes from the numeric models; the language model only writes the words. Evaluate on the most recent 12 months against climatology and persistence, never on shuffled data. See `ml/README.md`.
+- `ml/` — Python (not part of the pnpm workspace): LightGBM forecast models and the Ollama fine-tuning set, reading SQLite read-only. Every number comes from the numeric models; the language model only writes the words. Forecasting is hexagonal (ADR 007): core and ports in `ml/wxml/forecasting`, one module per adapter in `ml/wxml/adapters`, wired in `ml/wxml/__main__.py`. External guidance (Open-Meteo) is used only as it was issued. Evaluate on the most recent 12 months against climatology and persistence, never on shuffled data. See `ml/README.md`.
 
 ## Key Conventions
 

@@ -166,6 +166,34 @@ so when the models and past evenings disagree.
 Retrain every few months as the archive grows: rerun `train` and
 `llm-dataset`, then fine-tune again.
 
+## 5. What the big weather models say
+
+Your station knows your spot; the big weather models know what is coming in
+from the Atlantic. Open-Meteo serves both kinds of forecast for free (credit
+"Weather data by Open-Meteo.com"), so no account or key is needed.
+
+```bash
+python -m wxml guidance                 # the next 48 hours from four models
+python -m wxml guidance-check --days 90 # how each did here, a day ahead
+```
+
+The models are ECMWF (the European centre), `ukmo_seamless` (the Met Office,
+whose 2 km model covers all of Ireland), `icon_seamless` (the German service)
+and KNMI's Harmonie-AROME. Pick others with `--models`, using any Open-Meteo
+model id. The station's position comes from the database and is sent only to
+Open-Meteo, rounded to about 1 km.
+
+`guidance-check` compares what each model said a day ahead with what your
+station recorded, hour by hour, over recent days:
+
+- **bias** is the model minus your station. A frost hollow shows up as a warm
+  bias on clear nights, and an anemometer below 10 m as a windy one.
+- **skill** above 0 means the model beat "the same as this time yesterday".
+
+Those biases are what the next step corrects: the forecast past runs become
+inputs to the station's own models, so they learn "ECMWF says 3 °C, which here
+means 1 °C". Open-Meteo keeps past runs from January 2024 for most models.
+
 ## Tests
 
 ```bash
@@ -191,3 +219,5 @@ brief. The scores on your real data will be different.
 | `wxml/llm_dataset.py` | The fine-tuning set |
 | `wxml/predict.py` | Runs saved models on the latest data |
 | `wxml/ollama.py` | A tiny client for your local Ollama |
+| `wxml/forecasting/` | The core (ADR 007): guidance types, the ports, and the guidance use cases. No I/O |
+| `wxml/adapters/` | One module per port adapter: SQLite store, Open-Meteo guidance, Ollama narrator |
