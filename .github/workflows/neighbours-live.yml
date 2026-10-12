@@ -57,7 +57,7 @@ jobs:
           python -c 'import ssl; print(ssl.OPENSSL_VERSION)'
           url='https://openaccess.pf.api.met.ie/metno-wdb2ts/locationforecast?lat=53.35;long=-6.26'
           curl -sS -o /dev/null -D - --max-time 30 "$url" | head -12 || true
-          curl -sS -o /dev/null -D - --max-time 30 -A 'weatherlink_website-wxml' "$url" | head -3 || true
+          curl -sSL -o /dev/null -w 'after redirects: HTTP %{http_code} from %{url_effective}\n' --max-time 30 "$url" || true
           echo | openssl s_client -connect openaccess.pf.api.met.ie:443 -servername openaccess.pf.api.met.ie 2>&1 | grep -E 'Protocol|Cipher|Verify|subject=' || true
       - name: Met Éireann station history (climate data)
         if: ${{ !cancelled() }}
@@ -93,9 +93,15 @@ jobs:
         if: ${{ !cancelled() }}
         run: |
           python - <<'PY'
+          from wxml.adapters.http import Unreachable
           from wxml.adapters.met_eireann import MetEireannForecastSource
           from wxml.forecasting.domain import Location
-          frame = MetEireannForecastSource().latest(Location(53.35, -6.26), hours=48)
+          try:
+              frame = MetEireannForecastSource().latest(Location(53.35, -6.26), hours=48)
+          except Unreachable as err:
+              # A second opinion only: tonight's forecast goes out without it (see outside_inputs).
+              print(f'::warning::{err}')
+              raise SystemExit(0)
           print(frame[['hour', 'temp', 'rain', 'wind', 'gust', 'cloud', 'pressure']].head(12).to_string())
           assert frame['temp'].notna().sum() >= 40, 'fewer than 40 hours of temperature'
           assert frame['rain'].notna().sum() >= 24, 'fewer than 24 hours of rain'
