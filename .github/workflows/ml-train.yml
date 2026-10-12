@@ -67,9 +67,14 @@ jobs:
         working-directory: ml
         run: python -m wxml --db ../data/weather.db --guidance-dir ../history/guidance guidance-sync
 
+      - name: Fetch new neighbour months
+        continue-on-error: true
+        working-directory: ml
+        run: python -m wxml --db ../data/weather.db --neighbours-dir ../history/neighbours neighbours-sync
+
       - name: Train and score
         working-directory: ml
-        run: python -m wxml --db ../data/weather.db --guidance-dir ../history/guidance train
+        run: python -m wxml --db ../data/weather.db --guidance-dir ../history/guidance --neighbours-dir ../history/neighbours train
 
       - name: Scores
         working-directory: ml

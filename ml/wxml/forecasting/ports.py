@@ -12,8 +12,10 @@ Ports with adapters today:
 - ForecastLedger: every issued forecast, kept for scoring once the truth is in (JSON files).
 - Publisher: sends outputs to the site (its ingest API, or files the site run picks up).
 
-Planned (see ADR 007): NeighbourObservations (Met Éireann stations, Irish
-weather buoys), ModelRunner (LightGBM today, swappable), NowcastSource (radar).
+- NeighbourObservations: what nearby stations and the Atlantic buoys read (Met Éireann, Marine Institute).
+- NeighbourArchive: those readings kept by month (CSV files).
+
+Planned (see ADR 007): ModelRunner (LightGBM today, swappable), NowcastSource (radar).
 """
 
 from __future__ import annotations
@@ -95,4 +97,30 @@ class ForecastLedger(Protocol):
 class Publisher(Protocol):
     def publish(self, kind: str, payload: dict) -> None:
         """Send one output ('forecast', 'model-scores', ...) to the site."""
+        ...
+
+
+@runtime_checkable
+class NeighbourObservations(Protocol):
+    name: str
+
+    def hourly(self, start: str, end: str) -> pd.DataFrame:
+        """Readings for the UTC dates [start, end], as wxml.forecasting.neighbours.NEIGHBOUR_COLUMNS rows."""
+        ...
+
+    def recent(self, hours: int = 24) -> pd.DataFrame:
+        """The last `hours` of readings, for tonight's forecast."""
+        ...
+
+
+@runtime_checkable
+class NeighbourArchive(Protocol):
+    def months(self, source: str) -> dict[str, dict]:
+        """Stored months ('YYYY-MM'), each {'complete': bool}."""
+        ...
+
+    def save_month(self, source: str, month: str, frame: pd.DataFrame, complete: bool) -> None:
+        ...
+
+    def load(self, source: str, start: str | None = None, end: str | None = None) -> pd.DataFrame:
         ...

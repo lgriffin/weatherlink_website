@@ -139,3 +139,29 @@ def sync_guidance(source: ForecastSource, archive: GuidanceArchive, location: Lo
         fetched.append(month)
     return fetched
 
+
+def keep_issued_guidance(archive: GuidanceArchive, guidance: pd.DataFrame, issued: pd.Timestamp,
+                         hours: int = 24) -> int:
+    """Keep the guidance a forecast used, as issued, for sources with no archive of their own.
+
+    Saves from `issued` (the evening's 18:00, in local time) to 18:00 local the
+    next day (`hours` later on days without a clock change) under lead_days 0.
+    The windows of successive evenings meet without overlapping, so together
+    they form a record of what each source said 0 to 1 day ahead. Returns the rows kept.
+    """
+    if guidance.empty:
+        return 0
+    until = (issued.tz_localize(None) + pd.Timedelta(hours=hours)).tz_localize(issued.tz).tz_convert('UTC')
+    issued = issued.tz_convert('UTC').floor('h')
+    window = guidance[(guidance['hour'] >= issued) & (guidance['hour'] < until)]
+    kept = 0
+    for (source, month), part in window.groupby([window['source'], window['hour'].dt.strftime('%Y-%m')]):
+        first = f'{month}-01'
+        last = f'{pd.Timestamp(first) + pd.offsets.MonthEnd(0):%Y-%m-%d}'
+        stored = archive.load(source, 0, first, last)
+        merged = pd.concat([stored, part.assign(lead_days=0)], ignore_index=True)
+        merged = merged.drop_duplicates(['model', 'hour'], keep='first')
+        info = archive.months(source, 0).get(month, {'models': set()})
+        archive.save_month(source, 0, month, merged, sorted(info['models'] | set(part['model'])), complete=False)
+        kept += len(part)
+    return kept
