@@ -8,7 +8,8 @@ After scoring, each model is refitted on all the data and saved for use.
 
 When the tables carry guidance (what the big weather models said, as issued;
 see wxml.forecasting.mos), every task is trained a second time with it as
-extra inputs, on the days that have it. That version is scored on the same
+extra inputs, on the days that have it, together with what the neighbours
+(Met Éireann stations, the Atlantic buoys) were reading where known. That version is scored on the same
 held-out days against the station-only model and against the raw guidance,
 and is used for forecasts only if it beat the station-only model.
 """
@@ -27,6 +28,7 @@ import pandas as pd
 from . import baselines as bl
 from .features import FEATURES, PREVIOUS_NIGHT_FEATURES
 from .forecasting.mos import GUIDANCE_EVENING, GUIDANCE_HOURLY
+from .forecasting.neighbours import NEIGHBOUR_FEATURES
 
 MIN_TRAIN_ROWS = 200
 MIN_TEST_ROWS = 30
@@ -74,7 +76,7 @@ RAW_GUIDANCE = {
 
 
 def with_guidance(task: Task) -> Task:
-    extra = GUIDANCE_EVENING if task.table == 'evening' else GUIDANCE_HOURLY
+    extra = (GUIDANCE_EVENING if task.table == 'evening' else GUIDANCE_HOURLY) + NEIGHBOUR_FEATURES
     return Task(task.name + GUIDED, task.table, task.target, task.kind, task.features + extra,
                 description=task.description + ', with weather-model guidance', guided=True)
 
@@ -130,8 +132,13 @@ def fit(task: Task, x: pd.DataFrame, y: pd.Series, rounds: int | None = None) ->
     return lgb.train(params, lgb.Dataset(x, y), num_boost_round=rounds)
 
 
+def inputs(task: Task, frame: pd.DataFrame) -> pd.DataFrame:
+    """The task's input columns; any the table lacks (no neighbours today, say) are empty."""
+    return frame.reindex(columns=task.features).astype(float)
+
+
 def predict(task: Task, booster: lgb.Booster, x: pd.DataFrame) -> np.ndarray:
-    return booster.predict(x[task.features])
+    return booster.predict(inputs(task, x))
 
 
 def out_of_fold(task: Task, rows: pd.DataFrame, folds: int = 5) -> np.ndarray:
@@ -147,7 +154,7 @@ def out_of_fold(task: Task, rows: pd.DataFrame, folds: int = 5) -> np.ndarray:
         train = rows.iloc[rest]
         if task.kind == 'binary' and train[task.target].nunique() < 2:
             continue
-        booster = fit(task, train[task.features], train[task.target])
+        booster = fit(task, inputs(task, train), train[task.target])
         out[block] = predict(task, booster, rows.iloc[block])
     return out
 
@@ -246,7 +253,7 @@ def evaluate(task: Task, table: pd.DataFrame, test_from: pd.Timestamp, extra: Ex
     if task.kind == 'binary' and train[task.target].nunique() < 2:
         raise ValueError('the training period never saw both outcomes')
 
-    booster = fit(task, train[task.features], train[task.target])
+    booster = fit(task, inputs(task, train), train[task.target])
     pred = predict(task, booster, test)
     actual = test[task.target].to_numpy()
     baselines = baselines_for(task, train, test)
@@ -310,7 +317,7 @@ def _station_only(task: Task, ev: Evaluation) -> tuple[Extra, Extra | None]:
 
 
 def _save(task: Task, rows: pd.DataFrame, rounds: int, models_dir: Path) -> dict:
-    final = fit(task, rows[task.features], rows[task.target], rounds=rounds)
+    final = fit(task, inputs(task, rows), rows[task.target], rounds=rounds)
     final.save_model(str(models_dir / f'{task.name}.txt'))
     entry = {'target': task.target, 'kind': task.kind, 'table': task.table,
              'features': task.features, 'description': task.description}

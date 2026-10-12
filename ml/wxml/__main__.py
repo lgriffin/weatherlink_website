@@ -8,6 +8,7 @@
   guidance     what the big weather models say for the station (Open-Meteo)
   guidance-check  how well each of those models has done at the station
   guidance-sync   save their past forecasts, as issued, for training (MOS)
+  neighbours-sync save Met Éireann station and Atlantic buoy readings, for training
   scores       the last training run's scores as a Markdown table
   issue        make tonight's forecast, keep it in the ledger and send it to the site
   verify       score the ledger's forecasts against what happened
@@ -58,7 +59,34 @@ def load_tables(args, with_guidance: bool = False):
           f'{len(hourly):,} hours ({outage_hours:,} without data), {len(evenings):,} evenings', file=sys.stderr)
     if with_guidance:
         evenings, rows = _join_guidance(args, station, evenings, rows)
+        evenings, rows = _join_neighbours(args, hourly, evenings, rows)
     return station, hourly, evenings, rows
+
+
+NEIGHBOUR_SOURCES = ('iwbn', 'met-eireann')
+
+
+def _neighbour_sources():
+    from .adapters.irish_buoys import IrishBuoys
+    from .adapters.met_eireann import MetEireannObservations
+    return [IrishBuoys(), MetEireannObservations()]
+
+
+def _join_neighbours(args, hourly, evenings, rows):
+    import pandas as pd
+
+    from .adapters.neighbour_files import NeighbourFiles
+    from .forecasting.neighbours import add_neighbours
+    files = NeighbourFiles(args.neighbours_dir)
+    frames = [f for f in (files.load(name) for name in NEIGHBOUR_SOURCES) if len(f)]
+    if not frames:
+        print(f'No saved neighbour readings in {args.neighbours_dir}; run `neighbours-sync` to add them.',
+              file=sys.stderr)
+        return evenings, rows
+    neighbours = pd.concat(frames, ignore_index=True)
+    print(f"Neighbours: {neighbours['site'].nunique()} sites, {neighbours['hour'].min():%Y-%m-%d} to "
+          f"{neighbours['hour'].max():%Y-%m-%d}", file=sys.stderr)
+    return add_neighbours(evenings, rows, neighbours, hourly)
 
 
 def _archived_guidance(args):
@@ -97,25 +125,51 @@ def cmd_train(args):
     print(f'Models in {args.out / "models"}, scores in {args.out / "metrics.json"}')
 
 
-def predict_guidance(args):
-    """Guidance for the forecast: the latest runs for today, the saved as-issued runs for a past date."""
+def _warn(what, err):
+    print(f'No {what} ({err}); carrying on without.', file=sys.stderr)
+
+
+def outside_inputs(args) -> dict:
+    """What tonight's forecast can use from outside the station: guidance from the weather
+    models (the latest runs for today, the saved ones for a past date), the neighbours'
+    recent readings, and Met Éireann's own forecast as a second opinion."""
+    import pandas as pd
+    out = {'guidance': None, 'neighbours': None, 'second_opinions': []}
     if args.guidance == 'none':
-        return None
+        return out
+    live = args.guidance == 'live' and not args.date
     try:
-        if args.guidance == 'archive' or args.date:
-            frame = _archived_guidance(args)
-        else:
+        if live:
             from .adapters.open_meteo import DEFAULT_MODELS, OpenMeteoForecastSource
             frame = OpenMeteoForecastSource().latest(_location(args), DEFAULT_MODELS, hours=48, past_hours=24)
+        else:
+            frame = _archived_guidance(args)
+        out['guidance'] = frame if not frame.empty else None
     except (RuntimeError, LookupError, OSError) as err:
-        print(f'No guidance ({err}); using the station-only models.', file=sys.stderr)
-        return None
-    return frame if not frame.empty else None
+        _warn('weather-model guidance', err)
+    if not live:
+        return out
+    frames = []
+    for source in _neighbour_sources():
+        try:
+            frames.append(source.recent(hours=24))
+        except (RuntimeError, OSError, ValueError) as err:
+            _warn(f'{source.name} readings', err)
+    frames = [f for f in frames if len(f)]
+    out['neighbours'] = pd.concat(frames, ignore_index=True) if frames else None
+    try:
+        from .adapters.met_eireann import MetEireannForecastSource
+        frame = MetEireannForecastSource().latest(_location(args), hours=48, past_hours=24)
+        if not frame.empty:
+            out['second_opinions'].append(frame)
+    except (RuntimeError, LookupError, OSError, ValueError) as err:
+        _warn("Met Éireann's forecast", err)
+    return out
 
 
 def cmd_predict(args):
     from .predict import forecast
-    result = forecast(args.db, args.out / 'models', args.station, args.date, guidance=predict_guidance(args))
+    result = forecast(args.db, args.out / 'models', args.station, args.date, **outside_inputs(args))
     if args.ask:
         from .adapters.ollama_narrator import OllamaNarrator
         result['forecast'] = OllamaNarrator(args.ask).write(result['brief'])
@@ -248,14 +302,18 @@ def cmd_issue(args):
     # Tonight's, unless asked for another: never an earlier evening passed off as tonight's.
     date = args.date or f'{now.tz_convert(station.timezone):%Y-%m-%d}'
 
+    used = {}
+
     def run():
-        return forecast(args.db, args.out / 'models', args.station, date, guidance=predict_guidance(args))
+        used.update(outside_inputs(args))
+        return forecast(args.db, args.out / 'models', args.station, date, **used)
 
     record = issue_forecast(run, LedgerFiles(args.ledger), now, narrator=narrator,
                             narrator_name=args.ask, publishers=tuple(publishers), replace=args.replace,
                             date=date, log=lambda line: print(line, file=sys.stderr))
     if record is None:
         return
+    _keep_guidance(args, record, [used.get('guidance'), *used.get('second_opinions', [])])
     metrics = args.out / 'metrics.json'
     if args.with_scores and metrics.exists():
         for publisher in publishers:
@@ -279,6 +337,39 @@ def cmd_due(args):
     if issue not in hourly.index or bool(hourly.loc[issue, 'outage']):
         raise SystemExit(f"No 17:00-18:00 reading for {today} yet.")
     print(f'{today}: due')
+
+
+def _keep_guidance(args, record, frames):
+    """Keep the live guidance this forecast used, as issued (lead 0), from its 18:00 for a day."""
+    import pandas as pd
+
+    from .adapters.guidance_files import GuidanceFiles
+    from .forecasting.guidance import keep_issued_guidance
+    if args.date or args.guidance != 'live':
+        return
+    tz = record.get('timezone') or 'Europe/Dublin'
+    issued = pd.Timestamp(record['evening']['date']).replace(hour=18).tz_localize(tz)
+    archive = GuidanceFiles(args.guidance_dir)
+    for frame in frames:
+        if frame is not None and len(frame):
+            keep_issued_guidance(archive, frame, issued)
+
+
+def cmd_neighbours_sync(args):
+    from .adapters.neighbour_files import NeighbourFiles
+    from .forecasting.neighbours import sync_neighbours
+    archive = NeighbourFiles(args.neighbours_dir)
+    failed = False
+    for source in _neighbour_sources():
+        try:
+            fetched = sync_neighbours(source, archive, args.since, log=lambda line: print(line, file=sys.stderr))
+            print(f'{source.name}: fetched {len(fetched)} month(s) into {args.neighbours_dir}')
+        except (RuntimeError, OSError, ValueError) as err:
+            print(f'{source.name}: {err}', file=sys.stderr)
+            failed = True
+    print('Readings from Met Éireann (CC BY 4.0) and the Marine Institute (CC BY 4.0)')
+    if failed:
+        raise SystemExit(1)
 
 
 def cmd_verify(args):
@@ -322,6 +413,7 @@ def main(argv=None):
     parser.add_argument('--out', type=Path, default=ML_DIR / 'out', help='output folder (default: ml/out)')
     parser.add_argument('--station', help='station id (default: the active station)')
     parser.add_argument('--guidance-dir', type=Path, help='saved as-issued guidance (default: <out>/guidance)')
+    parser.add_argument('--neighbours-dir', type=Path, help="saved neighbours' readings (default: <out>/neighbours)")
     sub = parser.add_subparsers(dest='command', required=True)
 
     p = sub.add_parser('export', help='write hourly.csv and evenings.csv')
@@ -382,6 +474,10 @@ def main(argv=None):
     p.add_argument('--since', default=GUIDANCE_FROM, help=f'first date to fetch (default: {GUIDANCE_FROM})')
     p.set_defaults(func=cmd_guidance_sync)
 
+    p = sub.add_parser('neighbours-sync', help='save Met Éireann station and Atlantic buoy readings for training')
+    p.add_argument('--since', default='2023-01-01', help='first date to fetch (default: 2023-01-01)')
+    p.set_defaults(func=cmd_neighbours_sync)
+
     p = sub.add_parser('scores', help="the last training run's scores as a Markdown table")
     p.set_defaults(func=cmd_scores)
 
@@ -417,6 +513,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
     args.guidance_dir = args.guidance_dir or args.out / 'guidance'
+    args.neighbours_dir = args.neighbours_dir or args.out / 'neighbours'
     if hasattr(args, 'ledger'):
         args.ledger = args.ledger or args.out / 'ledger'
     args.func(args)

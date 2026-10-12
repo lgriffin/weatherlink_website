@@ -262,6 +262,34 @@ workflow by hand with "Make the forecast now" ticked to try it before 18:00.
 On your own machine, `scripts/spark-evening.sh` does the same with your Ollama
 model.
 
+## 8. Neighbours and a second opinion from Met Éireann
+
+```bash
+python -m wxml neighbours-sync   # Met Éireann station and Atlantic buoy readings since 2023
+```
+
+The weather here mostly arrives from the west, so the guided models also see
+what the Atlantic is doing at 18:00: pressure changes over 3 and 12 hours at
+the M3, M4 and M6 buoys, Valentia and Belmullet, the pressure difference
+between there and here, and between the south and north coasts (how windy
+it will be), wind and temperature out west, and rain in the last 3 hours at
+the Met Éireann stations. The sites are grouped rather than used one by one,
+so a few years of evenings is enough to learn from them.
+
+- Buoys: the Marine Institute's ERDDAP server (`IWBNetwork`), CC BY 4.0.
+- Stations: Met Éireann's climate-data hourly files for history (updated about
+  monthly) and their observations API for today. Copyright Met Éireann, CC BY 4.0.
+
+Readings go to `out/neighbours/<source>/YYYY-MM.csv` (`--neighbours-dir` for
+elsewhere); the site run keeps them in the `weather-history` branch.
+
+`issue` also asks Met Éireann's own point forecast what it expects tonight
+and tomorrow, and lists it next to the other models in the forecast and the
+brief. It keeps no archive, so every forecast saves the guidance it used,
+as issued, under `guidance/<source>/lead0/`, and `verify` scores Met Éireann
+alongside the rest. Their licence asks that a site showing their forecasts
+also shows their current warnings; the Forecast page does.
+
 ## Tests
 
 ```bash
@@ -288,6 +316,7 @@ brief. The scores on your real data will be different.
 | `wxml/predict.py` | Runs saved models on the latest data |
 | `wxml/ollama.py` | A tiny client for your local Ollama |
 | `wxml/forecasting/` | The core (ADR 007): guidance types, the ports, the guidance use cases, and `mos.py` (guidance as model inputs). No I/O |
-| `wxml/adapters/` | One module per port adapter: SQLite store, Open-Meteo guidance, guidance files, ledger files, publishers (site API or folder), Ollama narrator |
+| `wxml/adapters/` | One module per port adapter: SQLite store, Open-Meteo guidance, guidance files, ledger files, publishers (site API or folder), neighbours (buoys, Met Éireann) and their files, Met Éireann forecast, Ollama narrator |
 | `wxml/report.py` | The training scores as a Markdown table |
 | `wxml/forecasting/ledger.py` | Issuing a forecast, verifying it, and the ledger's scores |
+| `wxml/forecasting/neighbours.py` | Neighbour sites and their grouped inputs |

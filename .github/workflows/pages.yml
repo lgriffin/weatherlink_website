@@ -11,7 +11,8 @@
 # again, and it can be cloned onto a NAS or synced to Drive as it is.
 #
 # Once a day, the first run after 18:00 local time also makes tonight's
-# forecast (ml/): it saves the weather models' past runs, retrains, issues the
+# forecast (ml/): it saves the weather models' past runs and the neighbours'
+# readings, retrains, issues the
 # forecast into the ledger (history branch, forecasts/), scores past ones and
 # loads the forecast and model scores into the database for the site.
 #
@@ -138,12 +139,13 @@ jobs:
         run: |
           pip install -q -r requirements.txt
           ledger="$GITHUB_WORKSPACE/history/forecasts"
-          guidance="$GITHUB_WORKSPACE/history/guidance"
+          dirs=(--guidance-dir "$GITHUB_WORKSPACE/history/guidance" --neighbours-dir "$GITHUB_WORKSPACE/history/neighbours")
           outputs="$GITHUB_WORKSPACE/site-outputs"
           if python -m wxml due --ledger "$ledger"; then
-            python -m wxml --guidance-dir "$guidance" guidance-sync || echo "::warning::Open-Meteo guidance sync failed; training on what is saved."
-            python -m wxml --guidance-dir "$guidance" train
-            python -m wxml --guidance-dir "$guidance" issue --ledger "$ledger" --publish "$outputs" --with-scores
+            python -m wxml "${dirs[@]}" guidance-sync || echo "::warning::Open-Meteo guidance sync failed; training on what is saved."
+            python -m wxml "${dirs[@]}" neighbours-sync || echo "::warning::Neighbour sync failed; training on what is saved."
+            python -m wxml "${dirs[@]}" train
+            python -m wxml "${dirs[@]}" issue --ledger "$ledger" --publish "$outputs" --with-scores
             python -m wxml verify --ledger "$ledger"
           else
             # Already issued: send it again as issued, in case loading it into the site failed last time.
