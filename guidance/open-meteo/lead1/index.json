@@ -1,0 +1,295 @@
+{
+ "2024-01": {
+  "models": [
+   "icon_seamless"
+  ],
+  "complete": false
+ },
+ "2024-02": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless"
+  ],
+  "complete": false
+ },
+ "2024-03": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless"
+  ],
+  "complete": false
+ },
+ "2024-04": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless"
+  ],
+  "complete": false
+ },
+ "2024-05": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless"
+  ],
+  "complete": false
+ },
+ "2024-06": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe"
+  ],
+  "complete": false
+ },
+ "2024-07": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe"
+  ],
+  "complete": false
+ },
+ "2024-08": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2024-09": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2024-10": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2024-11": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2024-12": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2025-01": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2025-02": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2025-03": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2025-04": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2025-05": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2025-06": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2025-07": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2025-08": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2025-09": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2025-10": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2025-11": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2025-12": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2026-01": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2026-02": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2026-03": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2026-04": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2026-05": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2026-06": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2026-07": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2026-08": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2026-09": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": true
+ },
+ "2026-10": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": false
+ }
+}

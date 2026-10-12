@@ -1,0 +1,71 @@
+{
+ "station": "Graigue",
+ "evening": {
+  "date": "2026-10-12",
+  "night_min": 11.4,
+  "night_min_range": [
+   10.3,
+   12.6
+  ],
+  "frost_chance": 0.0,
+  "day_max": 16.5,
+  "rain_next_24h_chance": 0.997,
+  "analogs": [
+   {
+    "date": "2023-10-06",
+    "night_min": 14.2
+   },
+   {
+    "date": "2023-10-10",
+    "night_min": 14.3
+   },
+   {
+    "date": "2025-11-03",
+    "night_min": 12.9
+   },
+   {
+    "date": "2025-09-18",
+    "night_min": 13.8
+   },
+   {
+    "date": "2026-10-02",
+    "night_min": 6.4
+   }
+  ]
+ },
+ "latest_hour": {
+  "time": "2026-10-12T18:00:00+01:00",
+  "rain_next_6h_chance": 0.874,
+  "temp_in_24h": 13.0
+ },
+ "models": {
+  "night_min": "night_min+guidance",
+  "day_max": "day_max+guidance",
+  "rain_next_24h": "rain_next_24h+guidance",
+  "rain_next_6h": "rain_next_6h+guidance"
+ },
+ "guidance": {
+  "ecmwf_ifs025": {
+   "night_min": 9.6,
+   "day_max": 13.5,
+   "rain_24h": 4.1
+  },
+  "icon_seamless": {
+   "night_min": 9.9,
+   "day_max": 13.2,
+   "rain_24h": 4.7
+  },
+  "knmi_harmonie_arome_europe": {
+   "night_min": 8.3,
+   "day_max": 13.2,
+   "rain_24h": 2.0
+  },
+  "ukmo_seamless": {
+   "night_min": 9.3,
+   "day_max": 13.5,
+   "rain_24h": 3.0
+  }
+ },
+ "brief": "Issued 2026-10-12 18:00.\nNow: 15.2C, dew point 14.8C, humidity 97%, wind 1.8 m/s E, gusts to 7 m/s in the last 6h, pressure 1006.4 hPa (-0.2 in 3h), rain last 24h 7.0 mm.\nModel: overnight low 11.4C (likely range 10.3C to 12.6C); frost chance 0%; rain in next 6h 77%; rain by 18:00 tomorrow 100%; tomorrow's high 16.5C.\nNormal for date: low 9.3C, high 14.9C.\nLast night's low: 13.9C.\nSimilar past evenings: 2023-10-06 (low 14.2C), 2023-10-10 (low 14.3C, next 24h rain 36.8 mm), 2025-11-03 (low 12.9C, next 24h rain 14.6 mm), 2025-09-18 (low 13.8C, next 24h rain 14.2 mm), 2026-10-02 (low 6.4C, next 24h rain 1.8 mm).",
+ "issued_at": "2026-10-12T18:00:09Z"
+}
