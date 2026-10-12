@@ -239,12 +239,21 @@ def cmd_issue(args):
         from .adapters.ollama_narrator import OllamaNarrator
         narrator = OllamaNarrator(args.ask)
 
-    def run():
-        return forecast(args.db, args.out / 'models', args.station, args.date, guidance=predict_guidance(args))
+    from contextlib import closing
 
-    record = issue_forecast(run, LedgerFiles(args.ledger), pd.Timestamp.now(tz='UTC'), narrator=narrator,
+    from .data import connect_readonly, load_station
+    with closing(connect_readonly(args.db)) as conn:
+        station = load_station(conn, args.station)
+    now = pd.Timestamp.now(tz='UTC')
+    # Tonight's, unless asked for another: never an earlier evening passed off as tonight's.
+    date = args.date or f'{now.tz_convert(station.timezone):%Y-%m-%d}'
+
+    def run():
+        return forecast(args.db, args.out / 'models', args.station, date, guidance=predict_guidance(args))
+
+    record = issue_forecast(run, LedgerFiles(args.ledger), now, narrator=narrator,
                             narrator_name=args.ask, publishers=tuple(publishers), replace=args.replace,
-                            log=lambda line: print(line, file=sys.stderr))
+                            date=date, log=lambda line: print(line, file=sys.stderr))
     if record is None:
         return
     metrics = args.out / 'metrics.json'

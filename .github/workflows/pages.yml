@@ -138,13 +138,17 @@ jobs:
         run: |
           pip install -q -r requirements.txt
           ledger="$GITHUB_WORKSPACE/history/forecasts"
-          if ! python -m wxml due --ledger "$ledger"; then exit 0; fi
           guidance="$GITHUB_WORKSPACE/history/guidance"
-          python -m wxml --guidance-dir "$guidance" guidance-sync || echo "::warning::Open-Meteo guidance sync failed; training on what is saved."
-          python -m wxml --guidance-dir "$guidance" train
           outputs="$GITHUB_WORKSPACE/site-outputs"
-          python -m wxml --guidance-dir "$guidance" issue --ledger "$ledger" --publish "$outputs" --with-scores
-          python -m wxml verify --ledger "$ledger"
+          if python -m wxml due --ledger "$ledger"; then
+            python -m wxml --guidance-dir "$guidance" guidance-sync || echo "::warning::Open-Meteo guidance sync failed; training on what is saved."
+            python -m wxml --guidance-dir "$guidance" train
+            python -m wxml --guidance-dir "$guidance" issue --ledger "$ledger" --publish "$outputs" --with-scores
+            python -m wxml verify --ledger "$ledger"
+          else
+            # Already issued: send it again as issued, in case loading it into the site failed last time.
+            python -m wxml issue --ledger "$ledger" --publish "$outputs" --guidance none || exit 0
+          fi
           cd "$GITHUB_WORKSPACE"
           args=()
           for kind in forecast model-scores; do

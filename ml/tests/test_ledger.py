@@ -50,6 +50,25 @@ def test_issue_keeps_and_publishes_once_per_evening(tmp_path):
     assert issue_forecast(lambda: result(night=9.0), ledger, NOW, replace=True)['evening']['night_min'] == 9.0
 
 
+def test_an_evening_already_issued_is_sent_again_without_running(tmp_path):
+    ledger, site = LedgerFiles(tmp_path / 'ledger'), FilePublisher(tmp_path / 'site')
+    issued = issue_forecast(result, ledger, NOW)
+    (tmp_path / 'site').mkdir(exist_ok=True)
+
+    def must_not_run():
+        raise AssertionError('ran the forecast again')
+
+    assert issue_forecast(must_not_run, ledger, NOW, publishers=(site,), date='2025-01-02') is None
+    assert json.loads((tmp_path / 'site' / 'forecast.json').read_text()) == issued
+
+
+def test_an_earlier_evening_is_not_issued_as_tonight(tmp_path):
+    ledger = LedgerFiles(tmp_path)
+    with pytest.raises(LookupError, match='latest evening with data is 2025-01-01'):
+        issue_forecast(lambda: result('2025-01-01'), ledger, NOW, date='2025-01-02')
+    assert ledger.dates() == []
+
+
 def test_a_failing_narrator_leaves_the_numbers(tmp_path):
     lines = []
     record = issue_forecast(result, LedgerFiles(tmp_path), NOW, narrator=Words(fail=True), log=lines.append)
@@ -66,11 +85,18 @@ def test_verify_adds_what_happened_and_scores_it(tmp_path):
     assert verify_ledger(ledger, outcomes, NOW) == ['2025-01-02']   # the 3rd's night isn't known yet
     v = ledger.get('2025-01-02')['verification']
     assert v['frost'] is True and v['wet'] is True and v['night_min'] == -0.5
-    assert verify_ledger(ledger, outcomes, NOW) == []                # never verified twice
+    assert verify_ledger(ledger, outcomes, NOW) == []                # nothing changed, nothing saved
     scores = ledger_scores(ledger)
     assert scores['evenings'] == 1 and scores['night_min_mae'] == 2.0 and scores['day_max_mae'] == 1.0
     assert scores['frost_brier'] == pytest.approx(0.49)
     assert scores['weather_models']['ecmwf']['night_min_mae'] == 3.5
+    # A backlog of readings arrives and changes the night: corrected while the week is recent...
+    outcomes.loc['2025-01-02', 'night_min'] = -1.5
+    assert verify_ledger(ledger, outcomes, NOW) == ['2025-01-02']
+    assert ledger.get('2025-01-02')['verification']['night_min'] == -1.5
+    # ...but left alone once it has settled.
+    outcomes.loc['2025-01-02', 'night_min'] = 0.5
+    assert verify_ledger(ledger, outcomes, NOW + pd.Timedelta(days=30)) == []
 
 
 def test_http_publisher_posts_to_the_ingest_api():
@@ -104,12 +130,18 @@ def test_http_publisher_posts_to_the_ingest_api():
         server.shutdown()
 
 
-def test_issue_and_verify_from_the_command_line(synthetic_db, trained, tmp_path, capsys):
+def test_issue_and_verify_from_the_command_line(synthetic_db, trained, tables, tmp_path, capsys):
     from wxml.__main__ import main
     out, _ = trained
     base = ['--db', str(synthetic_db), '--out', str(out)]
     ledger, site = tmp_path / 'ledger', tmp_path / 'site'
-    main(base + ['issue', '--ledger', str(ledger), '--guidance', 'none', '--publish', str(site), '--with-scores'])
+    # The made-up station stopped long ago, so there is no forecast for tonight: never an older one instead.
+    with pytest.raises(LookupError):
+        main(base + ['issue', '--ledger', str(ledger), '--guidance', 'none'])
+    assert not ledger.exists() or not list(ledger.rglob('*.json'))
+    last = tables['evening'].index[-1]
+    main(base + ['issue', '--ledger', str(ledger), '--guidance', 'none', '--publish', str(site), '--with-scores',
+                 '--date', last])
     sent = json.loads((site / 'forecast.json').read_text())
     assert sent['brief'].startswith('Issued ') and 'issued_at' in sent
     assert 'tasks' in json.loads((site / 'model-scores.json').read_text())

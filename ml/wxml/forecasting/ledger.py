@@ -22,18 +22,22 @@ WET_MM = 0.2
 
 def issue_forecast(run: Callable[[], dict], ledger: ForecastLedger, now: pd.Timestamp,
                    narrator: Narrator | None = None, narrator_name: str | None = None,
-                   publishers: tuple[Publisher, ...] = (), replace: bool = False,
+                   publishers: tuple[Publisher, ...] = (), replace: bool = False, date: str | None = None,
                    log: Callable[[str], None] = lambda _: None) -> dict | None:
-    """Make tonight's forecast, keep it in the ledger and publish it.
+    """Make the forecast for `date` (tonight), keep it in the ledger and publish it.
 
-    Returns None (and does nothing else) when this evening already has one,
-    unless `replace`. A narrator that fails leaves the forecast without words
-    rather than stopping it.
+    When the evening already has a forecast (and not `replace`), nothing is
+    run: the forecast as issued is published again, so a delivery that failed
+    is made good, and None is returned. A narrator that fails leaves the
+    forecast without words rather than stopping it.
     """
+    if date is not None and not replace and _republish(ledger, date, publishers, log):
+        return None
     result = run()
-    date = result['evening']['date']
-    if ledger.get(date) is not None and not replace:
-        log(f'{date} already has a forecast in the ledger; nothing to do.')
+    issued_for = result['evening']['date']
+    if date is not None and issued_for != date:
+        raise LookupError(f'No forecast for {date}: the latest evening with data is {issued_for}.')
+    if not replace and _republish(ledger, issued_for, publishers, log):
         return None
     record = {**result, 'issued_at': now.tz_convert('UTC').strftime('%Y-%m-%dT%H:%M:%SZ')}
     record.pop('forecast', None)
@@ -49,6 +53,17 @@ def issue_forecast(run: Callable[[], dict], ledger: ForecastLedger, now: pd.Time
     return record
 
 
+def _republish(ledger: ForecastLedger, date: str, publishers: tuple[Publisher, ...],
+               log: Callable[[str], None]) -> bool:
+    record = ledger.get(date)
+    if record is None:
+        return False
+    log(f'{date} already has a forecast in the ledger; publishing it again as issued.')
+    for publisher in publishers:
+        publisher.publish('forecast', record)
+    return True
+
+
 def _num(v) -> float | None:
     try:
         f = float(v)
@@ -57,29 +72,38 @@ def _num(v) -> float | None:
     return None if math.isnan(f) else f
 
 
-def verify_ledger(ledger: ForecastLedger, outcomes: pd.DataFrame, now: pd.Timestamp) -> list[str]:
+def verify_ledger(ledger: ForecastLedger, outcomes: pd.DataFrame, now: pd.Timestamp,
+                  settle_days: int = 7) -> list[str]:
     """Add what happened to every forecast whose night and next day are now known.
 
     `outcomes` is the evening table (indexed by date) with night_min, day_max
-    and rain_24h_next. Returns the dates verified.
+    and rain_24h_next. Readings can arrive late (a console that was offline
+    uploads its backlog), so evenings in the last `settle_days` are checked
+    again and corrected if the outcome changed. Returns the dates verified or corrected.
     """
     done = []
+    settled = f'{now.tz_convert("UTC") - pd.Timedelta(days=settle_days):%Y-%m-%d}'
     for date in ledger.dates():
         record = ledger.get(date)
-        if record is None or 'verification' in record or date not in outcomes.index:
+        if record is None or date not in outcomes.index:
+            continue
+        before = record.get('verification')
+        if before is not None and date < settled:
             continue
         o = outcomes.loc[date]
         night, day, rain = _num(o.get('night_min')), _num(o.get('day_max')), _num(o.get('rain_24h_next'))
         if night is None or day is None or rain is None:
             continue
-        record['verification'] = {
+        outcome = {
             'night_min': round(night, 1),
             'day_max': round(day, 1),
             'rain_24h_mm': round(rain, 1),
             'frost': night <= 0,
             'wet': rain >= WET_MM,
-            'verified_at': now.tz_convert('UTC').strftime('%Y-%m-%dT%H:%M:%SZ'),
         }
+        if before is not None and all(before.get(k) == v for k, v in outcome.items()):
+            continue
+        record['verification'] = {**outcome, 'verified_at': now.tz_convert('UTC').strftime('%Y-%m-%dT%H:%M:%SZ')}
         ledger.save(record)
         done.append(date)
     return done
