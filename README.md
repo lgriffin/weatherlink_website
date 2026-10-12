@@ -13,6 +13,8 @@ folder; nothing here depends on that code to be understood.
                                                    raw archive for one UTC day
     stations/<id>/daily/YYYY/YYYY-MM.csv           daily summaries for one month (local days)
     guidance/open-meteo/lead1/YYYY-MM.csv          weather models' forecasts as issued a day ahead
+    guidance/<source>/lead0/YYYY-MM.csv            the forecasts each evening's forecast used, as issued
+    neighbours/<source>/YYYY-MM.csv                hourly readings from Met Éireann stations and the M-buoys
     forecasts/YYYY/YYYY-MM-DD.json                 every forecast the station issued (the ledger)
 
 ## Raw archive
@@ -45,7 +47,9 @@ the row; days hit by an outage have fewer.
 
 `guidance/` and `forecasts/` are written by the forecasting code in `ml/`
 of the site's repo. Guidance has one row per weather model and UTC hour
-(Open-Meteo, CC BY 4.0), in the same units as the summaries. Each forecast
+(Open-Meteo, CC BY 4.0; Met Éireann, CC BY 4.0), in the same units as the
+summaries. `neighbours/` holds Met Éireann station readings and the Irish
+weather buoys' (Marine Institute, CC BY 4.0), one row per site and UTC hour. Each forecast
 file holds the numbers as issued at 18:00, the brief and any words, and,
 once the night and next day are known, a `verification` with what happened.
 
