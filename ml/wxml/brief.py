@@ -121,8 +121,8 @@ def build_brief(date: str, now: pd.Series, outlook: Outlook,
                 normal_low: float | None, normal_high: float | None,
                 analogs: pd.DataFrame, models_said: dict | None = None, corrected: bool = False) -> str:
     """The brief. `models_said` is what each weather model said about tonight and tomorrow
-    ({model: {night_min, day_max, rain_24h}}); `corrected` marks numbers from a model that
-    learned from them (so the brief says they are corrected for here)."""
+    ({model: {night_min, day_max, rain_24h}}); `corrected` says every number on the Model line
+    came from a model that learned from them (so the brief says they are corrected for here)."""
     lines = [f'Issued {date} 18:00.']
 
     parts = []

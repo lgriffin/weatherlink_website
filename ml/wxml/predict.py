@@ -103,7 +103,7 @@ def forecast(db_path: str | Path, models_dir: Path, station_id: str | None = Non
     normal_low, normal_high = br.normals_for(evenings, date, int(row['doy']))
     analogs = find_analogs(evenings, date)
     text = br.build_brief(date, row, outlook, normal_low, normal_high, analogs, models_said or None,
-                          corrected=used['night_min'].endswith(GUIDED))
+                          corrected=all(m.endswith(GUIDED) for m in used.values()))
 
     return {
         'station': station.name,

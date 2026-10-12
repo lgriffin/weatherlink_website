@@ -55,7 +55,9 @@ def from_ledger(records: list[dict]) -> list[dict]:
                              day_max=e.get('day_max'), rain_24h=e.get('rain_next_24h_chance'))
         analogs = pd.DataFrame(e.get('analogs') or [], columns=['date', 'night_min', 'rain_24h_next']).set_index('date')
         outcome = pd.Series({'night_min': v['night_min'], 'day_max': v['day_max'], 'rain_24h_next': v['rain_24h_mm']})
-        answer = br.draft_forecast(outlook, outcome, e.get('normal_low'), analogs, r.get('guidance'))
+        # A brief issued before it listed the weather models can't be answered with their numbers.
+        said = r.get('guidance') if 'Weather models, ' in r['brief'] else None
+        answer = br.draft_forecast(outlook, outcome, e.get('normal_low'), analogs, said)
         examples.append({'date': e['date'], 'brief': r['brief'], 'answer': answer, 'outcome': outcome,
                          'source': 'ledger'})
     return examples

@@ -103,6 +103,26 @@ def test_word_checks_catch_the_usual_mistakes():
     assert check(calm, 'A sharp frost tonight.')['frost'] is False
     assert check(calm, 'No frost tonight.')['frost'] is True
     assert check(brief, ' '.join(['word'] * 130))['length'] is False
+    # Denials don't count as mentions, and the disagreement must be the weather models'.
+    assert check(brief, 'No frost tonight.')['frost'] is False
+    assert check(brief, 'No rain tomorrow.')['rain'] is False
+    assert check(brief, 'Treat the low with some caution.')['disagreement'] is False
+    assert check(calm, 'Frost is not expected.')['frost'] is True
+    # A difference counts only between two temperatures in the brief, however it's written.
+    assert check(brief, 'About 4°C colder than usual.')['numbers'] is True
+    assert check(brief, 'A low of 22 degrees.')['numbers'] is False  # 80 - 58, but those aren't temperatures
+
+
+def test_ledger_briefs_issued_before_the_models_section_get_no_model_numbers():
+    from wxml.eval_words import check
+    record = {'brief': 'Issued 2025-08-20 18:00.\nModel: overnight low 9.0C (likely range 7.0C to 11.0C); '
+                       'frost chance 0%; rain by 18:00 tomorrow 75%.',
+              'guidance': {'ecmwf_ifs025': {'night_min': 5.0}, 'ukmo_seamless': {'night_min': 12.0}},
+              'evening': {'date': '2025-08-20', 'night_min': 9.0, 'night_min_range': [7.0, 11.0], 'frost_chance': 0.0,
+                          'day_max': None, 'rain_next_24h_chance': 0.75, 'normal_low': None, 'analogs': []},
+              'verification': {'night_min': 8.5, 'day_max': 16.0, 'rain_24h_mm': 3.0}}
+    [ex] = llm_dataset.from_ledger([record])
+    assert 'weather models' not in ex['answer'] and check(ex['brief'], ex['answer'])['numbers']
 
 
 def test_ledger_evenings_keep_their_issued_briefs(tables):

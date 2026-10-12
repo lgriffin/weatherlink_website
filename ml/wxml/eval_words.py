@@ -3,7 +3,7 @@
 Every written forecast is checked against the brief it came from:
 
 - numbers: every number it states is in the brief (to within rounding), or is
-  the difference of two numbers in it ("3 degrees colder than usual");
+  the difference of two temperatures in it ("3 degrees colder than usual");
 - frost: mentioned when the brief gives at least a 50% chance, and not
   forecast when it gives less than 5%;
 - rain: mentioned when the brief gives at least 70% by tomorrow evening;
@@ -25,12 +25,18 @@ from pathlib import Path
 from typing import Callable
 
 NUMBER = re.compile(r'(?<![\w.])-?\d+(?:\.\d+)?')
-DEGREES = re.compile(r'\s*degrees?\b', re.I)
+# A number of degrees compared with something: "3 degrees colder than usual", "4°C above normal".
+DIFFERENCE = re.compile(r'\s*(degrees?\b|°\s*C?|C\b)[^.]{0,25}?\b(colder|milder|warmer|cooler|lower|higher|above|below|apart)\b', re.I)
+TEMPERATURE = re.compile(r'(?<![\w.])(-?\d+(?:\.\d+)?)C\b')  # how the brief writes them: 3.0C
 LABELS = re.compile(r'\d{4}-\d{2}-\d{2}|\d{1,2}:\d{2}')  # dates and clock times
 FROST = re.compile(r'\bfrost', re.I)
-NO_FROST = re.compile(r"\b(no|not|without|unlikely|frost-free|free of)\b[^.]{0,40}\bfrost|\bfrost[^.]{0,20}\bunlikely", re.I)
+NO_FROST = re.compile(r"\b(no|not|without|unlikely|frost-free|free of)\b[^.]{0,40}\bfrost"
+                      r"|\bfrost\b[^.]{0,20}\b(unlikely|not|isn't|won't)\b", re.I)
 RAIN = re.compile(r'\b(rain|showers?|wet|drizzle|downpours?)\b', re.I)
-DISAGREE = re.compile(r'\b(disagree\w*|differ\w*|uncertain\w*|unsure|caution|split|conflict\w*|vary|varies)\b', re.I)
+NO_RAIN = re.compile(r"\b(no|not|without|unlikely)\b[^.]{0,30}\b(rain|showers?|wet|drizzle)\b"
+                     r"|\b(rain|showers?)\b[^.]{0,20}\b(unlikely|not expected)\b", re.I)
+DISAGREE = re.compile(r'\b(disagree\w*|differ\w*|uncertain\w*|unsure|split|conflict\w*|vary|varies)\b', re.I)
+MODELS = re.compile(r'\bmodels?\b', re.I)
 
 CHECKS = ['numbers', 'frost', 'rain', 'disagreement', 'length']
 MAX_WORDS = 120
@@ -43,6 +49,7 @@ class Facts:
     rain_chance: float | None = None
     models_disagree: bool = False
     numbers: list[float] = field(default_factory=list)
+    temperatures: list[float] = field(default_factory=list)
 
 
 def facts_from_brief(brief: str) -> Facts:
@@ -50,15 +57,18 @@ def facts_from_brief(brief: str) -> Facts:
         m = re.search(pattern, brief)
         return int(m.group(1)) / 100 if m else None
     # Dates and clock times are labels, not numbers a forecast may quote.
-    numbers = [float(n) for n in NUMBER.findall(LABELS.sub(' ', brief))]
+    plain = LABELS.sub(' ', brief)
+    numbers = [float(n) for n in NUMBER.findall(plain)]
     return Facts(frost_chance=pct(r'frost chance (\d+)%'), rain_chance=pct(r'rain by 18:00 tomorrow (\d+)%'),
-                 models_disagree=bool(re.search(r"tonight's low:[^\n]*they disagree by", brief)), numbers=numbers)
+                 models_disagree=bool(re.search(r"tonight's low:[^\n]*they disagree by", brief)), numbers=numbers,
+                 temperatures=[float(n) for n in TEMPERATURE.findall(plain)])
 
 
-def _allowed(n: float, given: list[float], difference: bool) -> bool:
-    if any(abs(n - g) <= 0.5 for g in given):
+def _allowed(n: float, f: Facts, difference: bool) -> bool:
+    if any(abs(n - g) <= 0.5 for g in f.numbers):
         return True
-    return difference and any(abs(abs(a - b) - abs(n)) <= 0.5 for a, b in combinations(set(given), 2))
+    # Only a difference of two temperatures in the brief: "3 degrees colder than usual".
+    return difference and any(abs(abs(a - b) - abs(n)) <= 0.5 for a, b in combinations(set(f.temperatures), 2))
 
 
 def check(brief: str, text: str) -> dict[str, bool | None]:
@@ -69,20 +79,23 @@ def check(brief: str, text: str) -> dict[str, bool | None]:
     for m in NUMBER.finditer(plain):
         n = float(m.group())
         # "about 3 degrees colder than usual" may be the difference of two numbers in the brief.
-        difference = bool(DEGREES.match(plain, m.end()))
-        ok &= _allowed(n, f.numbers, difference)
+        difference = bool(DIFFERENCE.match(plain, m.end()))
+        ok &= _allowed(n, f, difference)
     out: dict[str, bool | None] = {'numbers': ok}
     frost_said = bool(FROST.search(text)) and not NO_FROST.search(text)
     if f.frost_chance is None:
         out['frost'] = None
     elif f.frost_chance >= 0.5:
-        out['frost'] = bool(FROST.search(text))
+        out['frost'] = frost_said
     elif f.frost_chance < 0.05:
         out['frost'] = not frost_said
     else:
         out['frost'] = None
-    out['rain'] = bool(RAIN.search(text)) if f.rain_chance is not None and f.rain_chance >= 0.7 else None
-    out['disagreement'] = bool(DISAGREE.search(text)) if f.models_disagree else None
+    rain_said = bool(RAIN.search(text)) and not NO_RAIN.search(text)
+    out['rain'] = rain_said if f.rain_chance is not None and f.rain_chance >= 0.7 else None
+    # About the weather models, not general caution (say, about similar past evenings).
+    said_disagree = any(DISAGREE.search(s) and MODELS.search(s) for s in re.split(r'(?<=[.!?])\s+', text))
+    out['disagreement'] = said_disagree if f.models_disagree else None
     out['length'] = len(text.split()) <= MAX_WORDS
     return out
 
@@ -114,7 +127,7 @@ def write_eval_set(examples: list[dict], path: Path) -> None:
     with open(path, 'w') as f:
         for ex in examples:
             f.write(json.dumps({'date': ex['date'], 'brief': ex['brief'],
-                                'facts': asdict(facts_from_brief(ex['brief'])) | {'numbers': None}},
+                                'facts': asdict(facts_from_brief(ex['brief'])) | {'numbers': None, 'temperatures': None}},
                                ensure_ascii=False) + '\n')
 
 
