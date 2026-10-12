@@ -78,9 +78,6 @@ def forecast(db_path: str | Path, models_dir: Path, station_id: str | None = Non
         frost_chance=float(spread['frost_chance'][0]),
         day_max=run('day_max'), rain_24h=run('rain_next_24h'), rain_6h=run('rain_next_6h'),
     )
-    normal_low, normal_high = br.normals_for(evenings, date, int(row['doy']))
-    analogs = find_analogs(evenings, date)
-    text = br.build_brief(date, row, outlook, normal_low, normal_high, analogs)
 
     latest = features[~features['outage']].iloc[-1]
     if has_guidance:
@@ -103,6 +100,11 @@ def forecast(db_path: str | Path, models_dir: Path, station_id: str | None = Non
             if any(v is not None for v in said.values()):
                 models_said[m] = said
 
+    normal_low, normal_high = br.normals_for(evenings, date, int(row['doy']))
+    analogs = find_analogs(evenings, date)
+    text = br.build_brief(date, row, outlook, normal_low, normal_high, analogs, models_said or None,
+                          corrected=used['night_min'].endswith(GUIDED))
+
     return {
         'station': station.name,
         'timezone': station.timezone,
@@ -113,7 +115,11 @@ def forecast(db_path: str | Path, models_dir: Path, station_id: str | None = Non
             'frost_chance': round(outlook.frost_chance, 3),
             'day_max': None if outlook.day_max is None else round(outlook.day_max, 1),
             'rain_next_24h_chance': None if outlook.rain_24h is None else round(outlook.rain_24h, 3),
-            'analogs': [{'date': d, 'night_min': round(float(a['night_min']), 1)} for d, a in analogs.iterrows()],
+            'normal_low': None if normal_low is None else round(normal_low, 1),
+            'normal_high': None if normal_high is None else round(normal_high, 1),
+            'analogs': [{'date': d, 'night_min': round(float(a['night_min']), 1),
+                         'rain_24h_next': None if pd.isna(a.get('rain_24h_next')) else round(float(a['rain_24h_next']), 1)}
+                        for d, a in analogs.iterrows()],
         },
         'latest_hour': now,
         'models': used,

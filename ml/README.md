@@ -107,6 +107,13 @@ ollama pull llama3.2:3b
 python -m wxml predict --ask llama3.2:3b
 ```
 
+The brief it reads has the station's numbers, the usual for the date, similar
+past evenings and, when guidance is in, a few lines on what the weather models
+said ("Weather models, tonight's low: ECMWF 3.0C, Met Office 2.0C, Met Éireann
+2.5C"), noting where they disagree. It never sees the raw tables. When the
+numbers came from a model that learned from guidance, the brief says
+"corrected for here".
+
 **Step 2: build the training set.**
 
 ```bash
@@ -116,7 +123,11 @@ python -m wxml llm-dataset --rewrite-with qwen2.5:14b
 ```
 
 This writes `out/llm/train.jsonl` and `valid.jsonl`, with one example per past
-evening, plus `review.csv` for reading by hand. Each example pairs the brief
+evening, `eval.jsonl` (the validation briefs alone, for step 5), plus
+`review.csv` for reading by hand. Evenings in the ledger (section 7) use the
+brief exactly as it was issued, so the set grows more like real use every
+night; older evenings get what the weather models said from the guidance
+archive where it has them. Each example pairs the brief
 the model would have had at 18:00 with a draft forecast.
 
 - The numbers in each brief come from models that never saw that stretch of
@@ -158,10 +169,24 @@ If you keep the adapter separate instead, use `--base llama3.2:3b --adapter
 `ollama/Modelfile.example` shows the result. The system prompt comes from
 `wxml/brief.py`, so the Modelfile always matches training.
 
-**Step 5: score it.** On the validation evenings, read the stock and
-fine-tuned forecasts side by side without knowing which is which. Check that
-it states the right numbers, mentions frost and rain when it should, and says
-so when the models and past evenings disagree.
+**Step 5: score it.** Score the stock model first, then your fine-tune, on
+the same validation briefs:
+
+```bash
+python -m wxml eval-words --model drafts               # the training drafts: should pass everything
+python -m wxml eval-words --model llama3.2:3b          # the stock baseline
+python -m wxml eval-words --model station-forecaster   # your fine-tune
+```
+
+Each forecast is checked against its brief: every number it states is in the
+brief (or a difference of two, as in "3 degrees colder than usual"), frost is
+mentioned at 50% or more and not forecast below 5%, rain is mentioned at 70% or
+more, it says so when the weather models disagree about tonight's low, and it
+stays under 120 words. You get the pass rate of each check, and
+`out/llm/eval-<model>.json` lists every failure with its brief. The fine-tune
+should beat the stock model; then read a sample of both side by side without
+knowing which is which, for how they read. Ollama only has to be running for
+this step; nothing else here needs it, and neither do the tests.
 
 Retrain every few months as the archive grows: rerun `train` and
 `llm-dataset`, then fine-tune again.
@@ -317,6 +342,7 @@ brief. The scores on your real data will be different.
 | `wxml/analogs.py` | Similar past evenings |
 | `wxml/brief.py` | The brief the language model reads, the draft answers, the system prompt |
 | `wxml/llm_dataset.py` | The fine-tuning set |
+| `wxml/eval_words.py` | The checks on written forecasts (numbers, frost, rain, disagreement, length) |
 | `wxml/predict.py` | Runs saved models on the latest data |
 | `wxml/ollama.py` | A tiny client for your local Ollama |
 | `wxml/forecasting/` | The core (ADR 007): guidance types, the ports, the guidance use cases, and `mos.py` (guidance as model inputs). No I/O |

@@ -2,8 +2,10 @@
 
 One example per past evening with a known outcome: the brief the model would
 have had at 18:00 (numbers from models that never saw that stretch of time,
-the usual for the date, similar past evenings) and a draft forecast. Written
-as chat-format JSONL, which both MLX-LM and Unsloth read.
+the usual for the date, similar past evenings, and what the weather models
+said where the guidance archive has it) and a draft forecast. Evenings in the
+ledger use the brief exactly as it was issued instead. Written as chat-format
+JSONL, which both MLX-LM and Unsloth read.
 """
 
 from __future__ import annotations
@@ -18,6 +20,7 @@ import pandas as pd
 
 from . import brief as br
 from .analogs import find_analogs
+from .forecasting.mos import evening_by_model
 from .models import TASKS_BY_NAME, night_outlook, out_of_fold
 from .ollama import rewrite
 
@@ -28,8 +31,40 @@ def _oof_series(task_name: str, table: pd.DataFrame) -> pd.Series:
     return pd.Series(out_of_fold(task, rows), index=rows.index)
 
 
+def models_said_by_date(guidance: pd.DataFrame | None, dates: pd.Index, tz: str) -> dict[str, dict]:
+    """{date: {model: {night_min, day_max, rain_24h}}} from as-issued guidance."""
+    if guidance is None or guidance.empty:
+        return {}
+    out: dict[str, dict] = {}
+    for _, r in evening_by_model(guidance, dates, tz).iterrows():
+        said = {k: (None if pd.isna(r[k]) else round(float(r[k]), 1)) for k in ('night_min', 'day_max', 'rain_24h')}
+        if any(v is not None for v in said.values()):
+            out.setdefault(r['date'], {})[r['model']] = said
+    return out
+
+
+def from_ledger(records: list[dict]) -> list[dict]:
+    """Examples from issued forecasts: the brief as it went out, and a draft worded by what happened."""
+    examples = []
+    for r in records:
+        v, e = r.get('verification'), r['evening']
+        if not v:
+            continue
+        low, high = e['night_min_range']
+        outlook = br.Outlook(night_min=e['night_min'], p10=low, p90=high, frost_chance=e['frost_chance'],
+                             day_max=e.get('day_max'), rain_24h=e.get('rain_next_24h_chance'))
+        analogs = pd.DataFrame(e.get('analogs') or [], columns=['date', 'night_min', 'rain_24h_next']).set_index('date')
+        outcome = pd.Series({'night_min': v['night_min'], 'day_max': v['day_max'], 'rain_24h_next': v['rain_24h_mm']})
+        answer = br.draft_forecast(outlook, outcome, e.get('normal_low'), analogs, r.get('guidance'))
+        examples.append({'date': e['date'], 'brief': r['brief'], 'answer': answer, 'outcome': outcome,
+                         'source': 'ledger'})
+    return examples
+
+
 def build(evenings: pd.DataFrame, hourly_rows: pd.DataFrame, valid_share: float = 0.1,
-          rewrite_with: str | None = None, log: Callable[[str], None] = print) -> dict[str, list]:
+          rewrite_with: str | None = None, log: Callable[[str], None] = print,
+          guidance: pd.DataFrame | None = None, tz: str = 'Europe/Dublin',
+          ledger_records: list[dict] = ()) -> dict[str, list]:
     need = ['night_min', 'day_max', 'rain_24h_next']
     usable = evenings.dropna(subset=need)
     if len(usable) < 50:
@@ -42,8 +77,12 @@ def build(evenings: pd.DataFrame, hourly_rows: pd.DataFrame, valid_share: float 
     rain_24h = _oof_series('rain_next_24h', evenings)
     rain_6h = _oof_series('rain_next_6h', hourly_rows)
 
+    said = models_said_by_date(guidance, usable.index, tz)
+    ledgered = {ex['date']: ex for ex in from_ledger(list(ledger_records))}
     examples = []
     for date, row in usable.iterrows():
+        if date in ledgered:
+            continue
         if pd.isna(night.get(date)):
             continue
         outlook_arr = night_outlook(np.array([night[date]]), residuals)
@@ -57,14 +96,26 @@ def build(evenings: pd.DataFrame, hourly_rows: pd.DataFrame, valid_share: float 
         )
         normal_low, normal_high = br.normals_for(evenings, date, int(row['doy']))
         analogs = find_analogs(evenings, date)
-        brief = br.build_brief(date, row, outlook, normal_low, normal_high, analogs)
-        answer = br.draft_forecast(outlook, row, normal_low, analogs)
+        models_said = said.get(date)
+        brief = br.build_brief(date, row, outlook, normal_low, normal_high, analogs, models_said)
+        answer = br.draft_forecast(outlook, row, normal_low, analogs, models_said)
         if rewrite_with:
             try:
                 answer = rewrite(rewrite_with, answer, brief)
             except OSError as err:
                 log(f'{date}: rewrite failed ({err}); keeping the draft')
-        examples.append({'date': date, 'brief': brief, 'answer': answer, 'outcome': row})
+        examples.append({'date': date, 'brief': brief, 'answer': answer, 'outcome': row, 'source': 'history'})
+    if ledgered:
+        log(f'{len(ledgered)} evenings from the ledger, with their briefs as issued')
+    examples = sorted(examples + list(ledgered.values()), key=lambda ex: ex['date'])
+    if rewrite_with:
+        for ex in examples:
+            if ex['source'] != 'ledger':
+                continue
+            try:
+                ex['answer'] = rewrite(rewrite_with, ex['answer'], ex['brief'])
+            except OSError as err:
+                log(f"{ex['date']}: rewrite failed ({err}); keeping the draft")
 
     cut = int(len(examples) * (1 - valid_share))
     return {'train': examples[:cut], 'valid': examples[cut:]}
@@ -76,12 +127,16 @@ def write(split: dict[str, list], out_dir: Path) -> None:
         with open(out_dir / f'{name}.jsonl', 'w') as f:
             for ex in examples:
                 f.write(json.dumps({'messages': br.messages(ex['brief'], ex['answer'])}, ensure_ascii=False) + '\n')
+    # The validation briefs alone, for scoring a model's own words (eval-words).
+    from .eval_words import write_eval_set
+    write_eval_set(split.get('valid', []), out_dir / 'eval.jsonl')
     # For reading a sample by hand: the brief, the draft and what really happened.
     with open(out_dir / 'review.csv', 'w', newline='') as f:
         w = csv.writer(f)
-        w.writerow(['split', 'date', 'brief', 'draft', 'actual_night_min', 'actual_day_max', 'actual_rain_24h_mm'])
+        w.writerow(['split', 'date', 'source', 'brief', 'draft', 'actual_night_min', 'actual_day_max',
+                    'actual_rain_24h_mm'])
         for name, examples in split.items():
             for ex in examples:
                 o = ex['outcome']
-                w.writerow([name, ex['date'], ex['brief'], ex['answer'],
+                w.writerow([name, ex['date'], ex.get('source', 'history'), ex['brief'], ex['answer'],
                             round(o['night_min'], 1), round(o['day_max'], 1), round(o['rain_24h_next'], 1)])
