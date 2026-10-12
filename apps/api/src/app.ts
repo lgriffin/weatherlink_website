@@ -16,7 +16,9 @@ import {
   DrizzleDailySummaryRepository,
   DrizzleRecordRepository,
   DrizzleIngestReportRepository,
+  IngestForecastRepository,
 } from '@weather/persistence-adapter';
+import { MetEireannWarnings } from '@weather/met-eireann-adapter';
 import {
   PollCurrentConditions,
   GetCurrentDashboard,
@@ -31,6 +33,7 @@ import {
   GetAnnualStats,
   RecordIngestReport,
   GetIngestOverview,
+  GetForecast,
 } from '@weather/application';
 import {
   registerStationRoutes,
@@ -40,6 +43,7 @@ import {
   registerCompareRoutes,
   registerAnnualRoutes,
   registerIngestRoutes,
+  registerForecastRoutes,
   registerSeriesRoutes,
   registerExportsRoutes,
   registerHealthRoutes,
@@ -102,6 +106,7 @@ export async function buildApp(env: Env) {
   const getAnnualStats = new GetAnnualStats(stationRepo, dailySummaryRepo, clock, env.APP_TIMEZONE);
   const recordIngestReport = new RecordIngestReport(ingestReportRepo, clock);
   const getIngestOverview = new GetIngestOverview(ingestReportRepo);
+  const getForecast = new GetForecast(new IngestForecastRepository(ingestReportRepo), new MetEireannWarnings(), clock);
 
   const app = Fastify({ logger: false });
 
@@ -116,6 +121,7 @@ export async function buildApp(env: Env) {
   registerCompareRoutes(app, { getYearComparison });
   registerAnnualRoutes(app, { getAnnualStats });
   registerIngestRoutes(app, { recordIngestReport, getIngestOverview, ingestToken: env.INGEST_TOKEN });
+  registerForecastRoutes(app, { getForecast });
   registerSeriesRoutes(app, { getTimeSeries });
   registerExportsRoutes(app, { exportData });
   registerHealthRoutes(app, { healthChecker });

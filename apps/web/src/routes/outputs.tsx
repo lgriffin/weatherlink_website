@@ -33,6 +33,13 @@ const TASK_LABELS: Record<string, string> = {
   frost_tonight: 'Frost tonight',
 };
 
+/** "night_min+guidance" reads as "Tonight’s low, with guidance". */
+function taskLabel(name: string): string {
+  const [base, variant] = name.split('+');
+  const label = TASK_LABELS[base ?? name] ?? name;
+  return variant ? `${label}, with ${variant}` : label;
+}
+
 function when(iso: string): string {
   return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
@@ -176,7 +183,9 @@ function scoreRows(p: ModelScoresPayload): ScoreRow[] {
   for (const [name, task] of Object.entries(p.tasks)) {
     add(name, task as Record<string, unknown>);
     const frost = (task as Record<string, unknown>)['frost_tonight'];
-    if (frost && typeof frost === 'object') add('frost_tonight', frost as Record<string, unknown>);
+    if (frost && typeof frost === 'object') {
+      add(name.includes('+') ? `frost_tonight+${name.split('+')[1]}` : 'frost_tonight', frost as Record<string, unknown>);
+    }
   }
   return rows;
 }
@@ -203,12 +212,12 @@ function ScoresCard({ report }: { report: Latest['model-scores'] }) {
               <tbody>
                 {rows.map((r) => r.skipped ? (
                   <tr key={r.name}>
-                    <td className="text-bold">{TASK_LABELS[r.name] ?? r.name}</td>
+                    <td className="text-bold">{taskLabel(r.name)}</td>
                     <td colSpan={4} className="text-muted">Not trained: {r.skipped}</td>
                   </tr>
                 ) : (
                   <tr key={r.name}>
-                    <td className="text-bold">{TASK_LABELS[r.name] ?? r.name}<span className="annual-sofar">{r.measure === 'MAE' ? 'average miss, °C or mm' : 'Brier score'}{r.testRows ? `, ${r.testRows} tests` : ''}</span></td>
+                    <td className="text-bold">{taskLabel(r.name)}<span className="annual-sofar">{r.measure === 'MAE' ? 'average miss, °C or mm' : 'Brier score'}{r.testRows ? `, ${r.testRows} tests` : ''}</span></td>
                     <td className="text-right">{fmt(r.model, r.measure)}</td>
                     <td className="text-right text-muted">{fmt(r.climatology, r.measure)}</td>
                     <td className="text-right text-muted">{fmt(r.persistence, r.measure)}</td>

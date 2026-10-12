@@ -9,3 +9,4 @@ export * from './api/series.js';
 export * from './api/compare.js';
 export * from './api/annual.js';
 export * from './api/ingest.js';
+export * from './api/forecast.js';
