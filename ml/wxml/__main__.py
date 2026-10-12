@@ -100,7 +100,9 @@ def cmd_modelfile(args):
 
 def _location(args):
     from .forecasting.domain import Location
-    if args.lat is not None and args.lon is not None:
+    if (args.lat is None) != (args.lon is None):
+        raise SystemExit('Pass both --lat and --lon, or neither to use the station.')
+    if args.lat is not None:
         return Location(args.lat, args.lon, args.elevation)
     from contextlib import closing
 
@@ -131,7 +133,7 @@ def cmd_guidance_check(args):
     from .adapters.open_meteo import OpenMeteoForecastSource
     from .adapters.sqlite_store import SqliteObservationStore
     from .forecasting.guidance import check_guidance
-    location = _location(args) if args.lat is not None else None
+    location = _location(args) if args.lat is not None or args.lon is not None else None
     station, scores = check_guidance(SqliteObservationStore(args.db), OpenMeteoForecastSource(), args.models,
                                      days=args.days, lead_days=args.lead, station_id=args.station,
                                      location=location)

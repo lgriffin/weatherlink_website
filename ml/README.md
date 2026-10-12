@@ -180,7 +180,8 @@ python -m wxml guidance-check --days 90 # how each did here, a day ahead
 The models are ECMWF (the European centre), `ukmo_seamless` (the Met Office,
 whose 2 km model covers all of Ireland), `icon_seamless` (the German service)
 and KNMI's Harmonie-AROME. Pick others with `--models`, using any Open-Meteo
-model id. The station's position comes from the database and is sent only to
+model id. Not every model gives every value (KNMI's Harmonie has no
+sea-level pressure); those stay empty rather than zero. The station's position comes from the database and is sent only to
 Open-Meteo, rounded to about 1 km.
 
 `guidance-check` compares what each model said a day ahead with what your

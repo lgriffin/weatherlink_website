@@ -27,9 +27,10 @@ def location_of(station: Station) -> Location:
 
 
 def score_guidance(hourly: pd.DataFrame, guidance: pd.DataFrame) -> pd.DataFrame:
-    """One row per (model, lead_days, variable): hours compared, bias, MAE, and
-    the MAE of persistence (the station's own reading lead_days earlier, or 24 h
-    for a same-day run) over the same hours. Outage hours are left out."""
+    """One row per (model, lead_days, variable): hours compared, bias and MAE,
+    and skill against persistence (the station's own reading lead_days earlier,
+    or 24 h for a same-day run). Skill compares the two over only the hours where
+    both exist; `persistence_mae` is over those hours too. Outage hours are left out."""
     observed = hourly.loc[~hourly['outage']]
     rows = []
     for (model, lead), g in guidance.groupby(['model', 'lead_days'], sort=True):
@@ -56,10 +57,11 @@ def score_guidance(hourly: pd.DataFrame, guidance: pd.DataFrame) -> pd.DataFrame
                 'bias': float(err.mean()),
                 'mae': float(err.abs().mean()),
                 'persistence_mae': float((persist - truth)[ok].abs().mean()) if ok.any() else np.nan,
+                'paired_mae': float((g[var] - truth)[ok].abs().mean()) if ok.any() else np.nan,
             })
     scores = pd.DataFrame(rows, columns=['model', 'lead_days', 'variable', 'hours', 'bias', 'mae',
-                                         'persistence_mae'])
-    scores['skill'] = 1 - scores['mae'] / scores['persistence_mae']
+                                         'persistence_mae', 'paired_mae'])
+    scores['skill'] = 1 - scores.pop('paired_mae') / scores['persistence_mae']
     return scores
 
 

@@ -70,6 +70,18 @@ def test_hour_sums_move_back_to_the_hour_they_cover():
     assert frame.loc[pd.Timestamp('2025-01-01 10:00', tz='UTC'), 'rain'] == 1.2
 
 
+def test_as_issued_covers_exactly_the_dates_asked_for():
+    times = pd.date_range('2025-01-01 00:00', '2025-01-03 00:00', freq='h', tz='UTC')
+    rain = {('m', 'rain'): list(range(len(times)))}
+    fetch = Recorder(body(times, ['m'], '_previous_day1', rain, suffix=False))
+    frame = OpenMeteoForecastSource(fetch).as_issued(HERE, ['m'], '2025-01-01', '2025-01-02').set_index('hour')
+    assert query(fetch.urls[0])['end_date'] == '2025-01-03'
+    assert frame.index.min() == pd.Timestamp('2025-01-01 00:00', tz='UTC')
+    assert frame.index.max() == pd.Timestamp('2025-01-02 23:00', tz='UTC')
+    # The day's last hour gets the rain Open-Meteo stamps at the next midnight.
+    assert frame.loc[pd.Timestamp('2025-01-02 23:00', tz='UTC'), 'rain'] == len(times) - 1
+
+
 def test_missing_values_stay_missing_and_empty_models_are_dropped():
     times = pd.date_range('2025-01-01', periods=2, freq='h', tz='UTC')
     response = body(times, ['a', 'b'], '_previous_day1')
@@ -119,6 +131,22 @@ def test_scores_show_each_models_bias(tables):
     assert scores.loc[('warm', 'temp'), 'hours'] == int((~hourly['outage']).sum())
 
 
+def test_skill_compares_model_and_persistence_over_the_same_hours():
+    hours = pd.date_range('2025-01-01', periods=72, freq='h', tz='UTC')
+    hourly = pd.DataFrame({'temp': 10.0, 'outage': False}, index=hours)
+    hourly.loc[hours[:24], 'temp'] = np.nan  # no reading a day before the second day
+    hourly.loc[hours[:24], 'outage'] = True
+    hourly.loc[hours[48:], 'temp'] = 12.0    # persistence misses by 2 on the third day only
+    guidance = pd.DataFrame({'source': 'fake', 'model': 'm', 'lead_days': 1, 'hour': hours[24:],
+                             'temp': hourly['temp'][24:].to_numpy() + 1.0})
+    guidance.loc[guidance['hour'] < hours[48], 'temp'] += 5  # big misses where persistence can't be scored
+    row = score_guidance(hourly, guidance).set_index('variable').loc['temp']
+    assert row['hours'] == 48 and row['mae'] == pytest.approx(3.5)
+    # Only the third day has a reading a day earlier: persistence misses by 2, the model by 1.
+    assert row['persistence_mae'] == pytest.approx(2.0)
+    assert row['skill'] == pytest.approx(0.5)
+
+
 class FakeSource:
     name = 'fake'
 
@@ -143,3 +171,11 @@ def test_check_guidance_scores_the_last_days_at_the_stations_position(synthetic_
     assert (pd.Timestamp(end) - pd.Timestamp(start)).days == 29 and lead == 1
     temp = scores[scores['variable'] == 'temp'].set_index('model')
     assert np.allclose(temp['bias'], 0.5)
+
+
+def test_guidance_wants_both_coordinates_or_neither():
+    from wxml.__main__ import main
+    with pytest.raises(SystemExit, match='both --lat and --lon'):
+        main(['guidance', '--lat', '53.3'])
+    with pytest.raises(SystemExit, match='both --lat and --lon'):
+        main(['guidance-check', '--lon', '-6.3'])

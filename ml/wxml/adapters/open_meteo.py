@@ -92,9 +92,14 @@ class OpenMeteoForecastSource:
         if not 1 <= lead_days <= 7:
             raise ValueError('lead_days must be 1 to 7 (what Open-Meteo keeps)')
         names = [f'{v}_previous_day{lead_days}' for v in VARIABLES.values()]
+        first = pd.Timestamp(start, tz='UTC')
+        after = pd.Timestamp(end, tz='UTC') + pd.Timedelta(days=1)
+        # One day more, so the last hour's rain (stamped at the next midnight) comes too.
         url = self._url(self._previous_runs_url, location, models, names,
-                        {'start_date': start, 'end_date': end})
-        return self._parse(self._fetch(url), models, lead_days=lead_days)
+                        {'start_date': start, 'end_date': f'{after:%Y-%m-%d}'})
+        frame = self._parse(self._fetch(url), models, lead_days=lead_days)
+        keep = (frame['hour'] >= first) & (frame['hour'] < after)
+        return frame.loc[keep].reset_index(drop=True)
 
     @staticmethod
     def _url(base: str, location: Location, models: list[str], variables: list[str], extra: dict) -> str:
