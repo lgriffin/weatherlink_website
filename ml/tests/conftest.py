@@ -6,7 +6,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from synthetic import simulate, write_db  # noqa: E402
+from synthetic import fake_guidance, simulate, write_db  # noqa: E402
 
 
 @pytest.fixture(scope='session')
@@ -30,8 +30,23 @@ def tables(synthetic_db):
 
 
 @pytest.fixture(scope='session')
-def trained(tables, tmp_path_factory):
+def guidance():
+    """Two made-up weather models' day-ahead guidance, from November 2023."""
+    return fake_guidance(simulate(days=820))
+
+
+@pytest.fixture(scope='session')
+def guided_tables(tables, guidance):
+    from wxml.forecasting.mos import add_guidance
+    evening, rows = add_guidance(tables['evening'], tables['rows'], guidance, tables['station'].timezone)
+    return {**tables, 'evening': evening, 'rows': rows}
+
+
+@pytest.fixture(scope='session')
+def trained(guided_tables, tmp_path_factory):
+    """Models trained with guidance, so both the station-only and the guided versions exist."""
     from wxml.models import train_all
     out = tmp_path_factory.mktemp('out')
-    report = train_all({'evening': tables['evening'], 'hourly': tables['rows']}, out, log=lambda _: None)
+    report = train_all({'evening': guided_tables['evening'], 'hourly': guided_tables['rows']}, out,
+                       log=lambda _: None)
     return out, report

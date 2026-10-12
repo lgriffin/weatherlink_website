@@ -49,3 +49,10 @@ def test_night_range_is_roughly_calibrated(trained):
     r = trained[1]['tasks']['night_min']['range_10_90']
     assert 0.02 <= r['share_below_p10'] <= 0.2
     assert 0.02 <= r['share_above_p90'] <= 0.2
+
+
+def test_scores_print_as_a_markdown_table(trained):
+    from wxml.report import markdown
+    text = markdown(trained[1])
+    assert text.startswith('| task | model | station only | raw guidance |')
+    assert '`night_min+guidance`' in text and '`night_min: frost`' in text

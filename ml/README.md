@@ -191,9 +191,45 @@ station recorded, hour by hour, over recent days:
   bias on clear nights, and an anemometer below 10 m as a windy one.
 - **skill** above 0 means the model beat "the same as this time yesterday".
 
-Those biases are what the next step corrects: the forecast past runs become
-inputs to the station's own models, so they learn "ECMWF says 3 °C, which here
-means 1 °C". Open-Meteo keeps past runs from January 2024 for most models.
+Those biases are what the next step corrects.
+
+## 6. Teaching the station's models what the big models said (MOS)
+
+```bash
+python -m wxml guidance-sync   # their day-ahead forecasts, as issued, since January 2024
+python -m wxml train           # now trains every task twice: station only, and with guidance
+python -m wxml scores          # the scores as a table
+```
+
+`guidance-sync` saves each month to `out/guidance/open-meteo/lead1/YYYY-MM.csv`
+(one row per model and hour), and fetches again only what can still change.
+Pass `--guidance-dir` to keep them elsewhere, such as the history folder.
+
+`train` then gives each task the models' view of the same windows: tonight's
+low, tomorrow's high, the next 24 and 6 hours of rain, cloud and wind tonight,
+the temperature this time tomorrow. Each input is the average of the models,
+with how far apart they are, so the station's models learn "ECMWF says 3 °C,
+which here means 1 °C" and how much to trust it. A `+guidance` model is scored
+on the same held-out days against:
+
+- **station only**: the model without guidance. It needs to beat this to be used.
+- **raw guidance**: the models' own number, uncorrected ("did our correction beat ECMWF on its own?").
+- climatology and persistence, as before.
+
+`predict` uses a `+guidance` model only where it beat the station-only one and
+today's guidance covers the window; otherwise it falls back on its own. It
+fetches the latest runs, or reads the saved ones for a past `--date`
+(`--guidance none` turns it off).
+
+Training uses the forecasts as they were issued about a day ahead, never a
+later run of the same hour. Live forecasts get the latest run, which is
+fresher, so they should do at least as well as the scores say. Open-Meteo
+keeps past runs from January 2024, so the guided models learn from less
+history than the station has.
+
+In GitHub Actions, the `ml-train` workflow does all of this on the real archive
+every Monday, on demand, and for any change to `ml/wxml`, and shows the table
+in the run summary.
 
 ## Tests
 
@@ -220,5 +256,6 @@ brief. The scores on your real data will be different.
 | `wxml/llm_dataset.py` | The fine-tuning set |
 | `wxml/predict.py` | Runs saved models on the latest data |
 | `wxml/ollama.py` | A tiny client for your local Ollama |
-| `wxml/forecasting/` | The core (ADR 007): guidance types, the ports, and the guidance use cases. No I/O |
-| `wxml/adapters/` | One module per port adapter: SQLite store, Open-Meteo guidance, Ollama narrator |
+| `wxml/forecasting/` | The core (ADR 007): guidance types, the ports, the guidance use cases, and `mos.py` (guidance as model inputs). No I/O |
+| `wxml/adapters/` | One module per port adapter: SQLite store, Open-Meteo guidance, guidance files, Ollama narrator |
+| `wxml/report.py` | The training scores as a Markdown table |

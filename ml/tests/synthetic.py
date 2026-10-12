@@ -121,3 +121,36 @@ def write_db(path: str | Path, weather: pd.DataFrame, interval_minutes: int = 30
     conn.commit()
     conn.close()
     return path
+
+
+def fake_guidance(weather: pd.DataFrame, biases: dict[str, float] | None = None, start: str = '2023-11-01',
+                  seed: int = 11, lead_days: int = 1) -> pd.DataFrame:
+    """Weather-model guidance for the made-up station, as rows like ForecastSource returns.
+
+    Each "model" knows the coming weather (the truth plus noise) but has its
+    own temperature bias and reads the wind too high, as a grid cell does for
+    a sheltered anemometer. A station model given guidance should learn those
+    corrections and beat the station-only model.
+    """
+    from wxml.data import dew_point
+    rng = np.random.default_rng(seed)
+    biases = biases or {'warm_model': 1.5, 'cool_model': -0.8}
+    w = weather.loc[weather.index >= pd.Timestamp(start, tz='UTC')]
+    n = len(w)
+    frames = []
+    for model, bias in biases.items():
+        temp = w['temp'].to_numpy() + bias + rng.normal(0, 0.9, n)
+        rh = np.clip(w['rh'].to_numpy() + rng.normal(0, 6, n), 20, 100)
+        rain = w['rain'].to_numpy() * rng.uniform(0.5, 1.5, n)
+        frames.append(pd.DataFrame({
+            'source': 'fake', 'model': model, 'lead_days': lead_days, 'hour': w.index,
+            'temp': temp, 'dew': dew_point(pd.Series(temp), pd.Series(rh)).to_numpy(), 'rh': rh,
+            'pressure': w['pressure'].to_numpy() + rng.normal(0, 0.8, n),
+            'wind': w['wind'].to_numpy() * 1.4 + rng.normal(0, 0.8, n),
+            'gust': w['gust'].to_numpy() * 1.2 + rng.normal(0, 1.5, n),
+            'wind_dir': w['direction'].to_numpy(),
+            'rain': np.round(rain, 1),
+            'cloud': np.clip((w['rh'].to_numpy() - 55) * 2.2 + rng.normal(0, 12, n), 0, 100),
+            'solar': w['solar'].to_numpy() * rng.uniform(0.85, 1.15, n),
+        }))
+    return pd.concat(frames, ignore_index=True)

@@ -102,6 +102,15 @@ def test_latest_keeps_only_the_hours_asked_for():
     assert (frame['lead_days'] == 0).all()
 
 
+def test_latest_can_include_the_past_hours():
+    now = pd.Timestamp.now(tz='UTC').floor('h')
+    times = pd.date_range(now - pd.Timedelta(hours=30), periods=60, freq='h')
+    fetch = Recorder(body(times, ['m'], suffix=False))
+    frame = OpenMeteoForecastSource(fetch).latest(HERE, ['m'], hours=12, past_hours=24)
+    assert query(fetch.urls[0])['past_days'] == '1'
+    assert frame['hour'].min() == now - pd.Timedelta(hours=24)
+
+
 def test_errors_are_reported():
     with pytest.raises(RuntimeError, match='bad model'):
         OpenMeteoForecastSource(Recorder({'error': True, 'reason': 'bad model'})).latest(HERE, ['x'])
@@ -179,3 +188,21 @@ def test_guidance_wants_both_coordinates_or_neither():
         main(['guidance', '--lat', '53.3'])
     with pytest.raises(SystemExit, match='both --lat and --lon'):
         main(['guidance-check', '--lon', '-6.3'])
+
+
+def test_fetch_tries_again_after_a_timeout(monkeypatch):
+    from wxml.adapters import open_meteo
+    calls = []
+
+    def flaky(url, timeout):
+        calls.append(url)
+        if len(calls) < 3:
+            raise TimeoutError('The handshake operation timed out')
+        return {'ok': True}
+
+    monkeypatch.setattr(open_meteo, '_fetch_once', flaky)
+    assert open_meteo._fetch_json('u', sleep=lambda _: None) == {'ok': True} and len(calls) == 3
+    calls.clear()
+    monkeypatch.setattr(open_meteo, '_fetch_once', lambda url, timeout: (_ for _ in ()).throw(TimeoutError('slow')))
+    with pytest.raises(RuntimeError, match='Could not reach Open-Meteo: slow'):
+        open_meteo._fetch_json('u', attempts=2, sleep=lambda _: None)
