@@ -67,9 +67,62 @@ class Outlook:
     rain_6h: float | None = None
 
 
+# Friendly names for the weather models a brief can mention.
+MODEL_NAMES = {
+    'ecmwf_ifs025': 'ECMWF',
+    'ukmo_seamless': 'Met Office',
+    'icon_seamless': 'ICON',
+    'knmi_harmonie_arome_europe': 'Harmonie',
+    'met_eireann': 'Met Éireann',
+}
+# The weather models "disagree" about a temperature when they are this far apart (°C).
+MODELS_DISAGREE = 2.0
+
+
+def model_name(model: str) -> str:
+    return MODEL_NAMES.get(model, model.replace('_', ' '))
+
+
+def _said(models_said: dict | None, key: str) -> list[tuple[str, float]]:
+    return [(model_name(m), v[key]) for m, v in (models_said or {}).items() if _num(v.get(key)) is not None]
+
+
+def models_disagree(models_said: dict | None, key: str = 'night_min') -> tuple[float, float] | None:
+    """(lowest, highest) when the weather models are MODELS_DISAGREE or more apart, else None."""
+    values = [v for _, v in _said(models_said, key)]
+    if len(values) >= 2 and max(values) - min(values) >= MODELS_DISAGREE:
+        return min(values), max(values)
+    return None
+
+
+def guidance_lines(models_said: dict | None) -> list[str]:
+    """What the weather models said, in a few numbers: never the raw tables."""
+    lines = []
+    for key, label in (('night_min', "tonight's low"), ('day_max', "tomorrow's high")):
+        said = _said(models_said, key)
+        if not said:
+            continue
+        line = f'Weather models, {label}: ' + ', '.join(f'{n} {t(v)}' for n, v in said)
+        apart = models_disagree(models_said, key)
+        if apart:
+            line += f' (they disagree by {t(apart[1] - apart[0])})'
+        lines.append(line + '.')
+    rain = _said(models_said, 'rain_24h')
+    if rain:
+        wet = [v for _, v in rain if v >= 0.2]
+        line = f'Weather models, rain by 18:00 tomorrow: wet in {len(wet)} of {len(rain)}'
+        if wet:
+            line += f' (up to {max(wet):.1f} mm)'
+        lines.append(line + '.')
+    return lines
+
+
 def build_brief(date: str, now: pd.Series, outlook: Outlook,
                 normal_low: float | None, normal_high: float | None,
-                analogs: pd.DataFrame) -> str:
+                analogs: pd.DataFrame, models_said: dict | None = None, corrected: bool = False) -> str:
+    """The brief. `models_said` is what each weather model said about tonight and tomorrow
+    ({model: {night_min, day_max, rain_24h}}); `corrected` says every number on the Model line
+    came from a model that learned from them (so the brief says they are corrected for here)."""
     lines = [f'Issued {date} 18:00.']
 
     parts = []
@@ -94,7 +147,8 @@ def build_brief(date: str, now: pd.Series, outlook: Outlook,
         parts.append(f"sky this afternoon {sky(now['clearness_6h'])}")
     lines.append('Now: ' + ', '.join(parts) + '.')
 
-    model = (f'Model: overnight low {t(outlook.night_min)} '
+    label = 'Model (corrected for here)' if corrected else 'Model'
+    model = (f'{label}: overnight low {t(outlook.night_min)} '
              f'(likely range {t(outlook.p10)} to {t(outlook.p90)}); '
              f'frost chance {outlook.frost_chance:.0%}')
     if outlook.rain_6h is not None:
@@ -104,6 +158,7 @@ def build_brief(date: str, now: pd.Series, outlook: Outlook,
     if outlook.day_max is not None:
         model += f"; tomorrow's high {t(outlook.day_max)}"
     lines.append(model + '.')
+    lines += guidance_lines(models_said)
 
     if normal_low is not None and normal_high is not None:
         lines.append(f'Normal for date: low {t(normal_low)}, high {t(normal_high)}.')
@@ -134,7 +189,7 @@ ANALOG_DISAGREE = 2.0
 
 
 def draft_forecast(outlook: Outlook, outcome: pd.Series, normal_low: float | None,
-                   analogs: pd.DataFrame) -> str:
+                   analogs: pd.DataFrame, models_said: dict | None = None) -> str:
     """A first-draft answer for the training set.
 
     Every number comes from the brief, so the language model learns never to
@@ -180,6 +235,10 @@ def draft_forecast(outlook: Outlook, outcome: pd.Series, normal_low: float | Non
     if outlook.day_max is not None:
         s.append(f'Tomorrow tops out at about {_temp_words(outlook.day_max)}.')
 
+    apart = models_disagree(models_said)
+    if apart:
+        s.append(f"The weather models disagree about tonight, with lows from {_temp_words(apart[0])} "
+                 f"to {_temp_words(apart[1])}.")
     if len(analogs) >= 3:
         lows = analogs['night_min'].astype(float)
         gap = float(lows.median()) - outlook.night_min

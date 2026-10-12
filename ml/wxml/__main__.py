@@ -5,6 +5,7 @@
   predict      run the saved models on the latest data and print tonight's brief
   llm-dataset  build the fine-tuning set for the Ollama forecaster
   modelfile    write an Ollama Modelfile for your fine-tuned adapter
+  eval-words   check a model's written forecasts against their briefs (numbers, frost, rain)
   guidance     what the big weather models say for the station (Open-Meteo)
   guidance-check  how well each of those models has done at the station
   guidance-sync   save their past forecasts, as issued, for training (MOS)
@@ -198,12 +199,62 @@ def cmd_predict(args):
 
 def cmd_llm_dataset(args):
     from . import llm_dataset
-    _, _, evenings, rows = load_tables(args)
-    split = llm_dataset.build(evenings, rows, rewrite_with=args.rewrite_with)
+    from .adapters.ledger_files import LedgerFiles
+    station, _, evenings, rows = load_tables(args)
+    guidance = _archived_guidance(args)
+    ledger = LedgerFiles(args.ledger)
+    records = [r for r in (ledger.get(d) for d in ledger.dates()) if r and r.get('station') in (None, station.name)]
+    split = llm_dataset.build(evenings, rows, rewrite_with=args.rewrite_with, guidance=guidance,
+                              tz=station.timezone, ledger_records=records)
     out = args.out / 'llm'
     llm_dataset.write(split, out)
     print(f"Wrote {len(split['train'])} training and {len(split['valid'])} validation examples to {out}")
-    print(f'Read a sample in {out / "review.csv"} before training.')
+    print(f'Read a sample in {out / "review.csv"} before training. Score a model with eval-words.')
+
+
+def cmd_eval_words(args):
+    from .eval_words import read_eval_set, score
+    out = args.out / 'llm'
+    if args.model == 'drafts':
+        valid = [json.loads(line) for line in (out / 'valid.jsonl').read_text().splitlines() if line.strip()]
+        answers = {m['messages'][1]['content']: m['messages'][2]['content'] for m in valid}
+        examples = [{'date': None, 'brief': b} for b in answers]
+
+        def write(brief):
+            return answers[brief]
+    else:
+        from .adapters.ollama_narrator import OllamaNarrator
+        examples = read_eval_set(args.set or out / 'eval.jsonl')
+        write = OllamaNarrator(args.model).write
+    if args.limit is not None:
+        examples = examples[:args.limit]
+    try:
+        report = score(examples, write, log=lambda line: print(line, file=sys.stderr))
+    except OSError as err:
+        raise SystemExit(f'Could not reach Ollama at {_ollama_host()} ({err}). Is `ollama serve` running?')
+    name = args.model.replace('/', '_').replace(':', '_')
+    out.mkdir(parents=True, exist_ok=True)
+    path = out / f'eval-{name}.json'
+    path.write_text(json.dumps({'model': args.model, **report}, indent=1, ensure_ascii=False) + '\n')
+    if not report['forecasts']:
+        raise SystemExit(f'{args.model}: no briefs to score.')
+    print(f"{args.model}: all checks passed on {report['all_checks_passed']:.0%} of {report['forecasts']} forecasts")
+    for check, r in report['checks'].items():
+        rate = 'n/a' if r['pass_rate'] is None else f"{r['pass_rate']:.0%}"
+        print(f"  {check}: {rate} of {r['checked']}")
+    print(f'Failures, with their briefs, in {path}')
+
+
+def _positive(value: str) -> int:
+    n = int(value)
+    if n < 1:
+        raise argparse.ArgumentTypeError('must be 1 or more')
+    return n
+
+
+def _ollama_host():
+    from .ollama import host
+    return host()
 
 
 def cmd_modelfile(args):
@@ -461,7 +512,15 @@ def main(argv=None):
 
     p = sub.add_parser('llm-dataset', help='build train.jsonl / valid.jsonl for fine-tuning')
     p.add_argument('--rewrite-with', metavar='MODEL', help='polish each draft with this local Ollama model')
+    p.add_argument('--ledger', type=Path, help='issued forecasts to learn from (default: <out>/ledger)')
     p.set_defaults(func=cmd_llm_dataset)
+
+    p = sub.add_parser('eval-words', help="check a model's written forecasts against their briefs")
+    p.add_argument('--model', required=True,
+                   help="an Ollama model (e.g. llama3.2:3b, station-forecaster), or 'drafts' for the training drafts")
+    p.add_argument('--set', type=Path, help='the evaluation briefs (default: <out>/llm/eval.jsonl)')
+    p.add_argument('--limit', type=_positive, help='only the first N briefs')
+    p.set_defaults(func=cmd_eval_words)
 
     p = sub.add_parser('modelfile', help='write an Ollama Modelfile')
     p.add_argument('--base', default='llama3.2:3b', help='base model the adapter was trained on')
