@@ -47,6 +47,7 @@ class Station:
     timezone: str
     latitude: float | None
     longitude: float | None
+    elevation_m: float | None = None
 
 
 def connect_readonly(db_path: str | Path) -> sqlite3.Connection:
@@ -57,13 +58,13 @@ def connect_readonly(db_path: str | Path) -> sqlite3.Connection:
 
 
 def load_station(conn: sqlite3.Connection, station_id: str | None = None) -> Station:
-    sql = 'SELECT id, name, timezone, latitude, longitude FROM stations'
+    sql = 'SELECT id, name, timezone, latitude, longitude, elevation_metres FROM stations'
     rows = conn.execute(sql + (' WHERE id = ?' if station_id else ' ORDER BY is_active DESC, id'),
                         (station_id,) if station_id else ()).fetchall()
     if not rows:
         raise LookupError('No station found in the database')
-    sid, name, tz, lat, lon = rows[0]
-    return Station(str(sid), name, tz or 'Europe/Dublin', lat, lon)
+    sid, name, tz, lat, lon, elevation = rows[0]
+    return Station(str(sid), name, tz or 'Europe/Dublin', lat, lon, elevation)
 
 
 def load_readings(conn: sqlite3.Connection, station_id: str) -> pd.DataFrame:

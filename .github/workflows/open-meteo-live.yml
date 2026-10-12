@@ -1,0 +1,46 @@
+name: open-meteo-live
+
+# Checks that the Open-Meteo adapter still understands the real API. Runs
+# weekly, when the adapter changes, and on demand. It asks about a public
+# reference point (Dublin city centre), never the station.
+
+on:
+  pull_request:
+    paths: ['ml/wxml/adapters/open_meteo.py', '.github/workflows/open-meteo-live.yml']
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  open-meteo-live:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: ml/requirements*.txt
+      - run: pip install -r requirements.txt
+      - name: Latest runs
+        run: python -m wxml guidance --lat 53.35 --lon -6.26 --hours 24 --every 6
+      - name: Day-ahead runs as issued
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          from wxml.adapters.open_meteo import DEFAULT_MODELS, OpenMeteoForecastSource
+          from wxml.forecasting.domain import Location
+          end = pd.Timestamp.now(tz='UTC').floor('D') - pd.Timedelta(days=2)
+          frame = OpenMeteoForecastSource().as_issued(
+              Location(53.35, -6.26), DEFAULT_MODELS, f'{end - pd.Timedelta(days=2):%Y-%m-%d}', f'{end:%Y-%m-%d}')
+          print(frame.groupby('model')[['temp', 'rain', 'wind', 'pressure']].agg(['count', 'mean']).round(2))
+          missing = set(DEFAULT_MODELS) - set(frame['model'])
+          assert not missing, f'no data for {missing}'
+          assert frame['temp'].notna().mean() > 0.9, 'temperature mostly missing'
+          PY

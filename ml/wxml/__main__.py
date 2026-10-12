@@ -5,6 +5,8 @@
   predict      run the saved models on the latest data and print tonight's brief
   llm-dataset  build the fine-tuning set for the Ollama forecaster
   modelfile    write an Ollama Modelfile for your fine-tuned adapter
+  guidance     what the big weather models say for the station (Open-Meteo)
+  guidance-check  how well each of those models has done at the station
 """
 
 from __future__ import annotations
@@ -66,12 +68,11 @@ def cmd_train(args):
 
 
 def cmd_predict(args):
-    from .brief import messages
     from .predict import forecast
     result = forecast(args.db, args.out / 'models', args.station, args.date)
     if args.ask:
-        from .ollama import chat
-        result['forecast'] = chat(args.ask, messages(result['brief']))
+        from .adapters.ollama_narrator import OllamaNarrator
+        result['forecast'] = OllamaNarrator(args.ask).write(result['brief'])
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
     else:
@@ -95,6 +96,56 @@ def cmd_modelfile(args):
     args.output = args.output or args.out / 'Modelfile'
     args.output.write_text(text)
     print(f'Wrote {args.output}. Next: ollama create station-forecaster -f {args.output}')
+
+
+def _location(args):
+    from .forecasting.domain import Location
+    if (args.lat is None) != (args.lon is None):
+        raise SystemExit('Pass both --lat and --lon, or neither to use the station.')
+    if args.lat is not None:
+        return Location(args.lat, args.lon, args.elevation)
+    from contextlib import closing
+
+    from .data import connect_readonly, load_station
+    from .forecasting.guidance import location_of
+    with closing(connect_readonly(args.db)) as conn:
+        return location_of(load_station(conn, args.station))
+
+
+def cmd_guidance(args):
+    from .adapters.open_meteo import OpenMeteoForecastSource
+    frame = OpenMeteoForecastSource().latest(_location(args), args.models, args.hours)
+    if args.json:
+        out = frame.assign(hour=frame['hour'].dt.strftime('%Y-%m-%dT%H:%MZ'))
+        print(out.to_json(orient='records', indent=1))
+        return
+    if frame.empty:
+        raise SystemExit('Open-Meteo returned no data for those models.')
+    cols = ['temp', 'rain', 'wind', 'gust', 'cloud', 'pressure']
+    for model, g in frame.groupby('model', sort=False):
+        print(f'\n{model}')
+        table = g.set_index('hour')[cols].iloc[::args.every]
+        print(table.round(1).to_string())
+    print('\nWeather data by Open-Meteo.com (CC BY 4.0)')
+
+
+def cmd_guidance_check(args):
+    from .adapters.open_meteo import OpenMeteoForecastSource
+    from .adapters.sqlite_store import SqliteObservationStore
+    from .forecasting.guidance import check_guidance
+    location = _location(args) if args.lat is not None or args.lon is not None else None
+    station, scores = check_guidance(SqliteObservationStore(args.db), OpenMeteoForecastSource(), args.models,
+                                     days=args.days, lead_days=args.lead, station_id=args.station,
+                                     location=location)
+    path = args.out / 'guidance-scores.json'
+    path.write_text(scores.to_json(orient='records', indent=1))
+    if scores.empty:
+        raise SystemExit('Nothing to compare: no overlap between the guidance and the station.')
+    print(f'{station.name}: forecasts made {args.lead} day(s) ahead, last {args.days} days')
+    print('bias = model minus station; skill > 0 beats persistence (same time yesterday)\n')
+    for var, g in scores.groupby('variable', sort=False):
+        print(g.drop(columns=['variable', 'lead_days']).round(3).to_string(index=False), '\n', sep='')
+    print(f'Saved {path}. Weather data by Open-Meteo.com (CC BY 4.0)')
 
 
 def _local(ref: str | None) -> str | None:
@@ -144,6 +195,28 @@ def main(argv=None):
     p.add_argument('--adapter', help='path to the LoRA adapter folder or GGUF')
     p.add_argument('--output', type=Path, help='where to write it (default: <out>/Modelfile)')
     p.set_defaults(func=cmd_modelfile)
+
+    from .adapters.open_meteo import DEFAULT_MODELS
+
+    def guidance_args(p):
+        p.add_argument('--models', type=lambda v: v.split(','), default=DEFAULT_MODELS,
+                       help=f"Open-Meteo model ids, comma-separated (default: {','.join(DEFAULT_MODELS)})")
+        p.add_argument('--lat', type=float, help="latitude (default: the station's, from the database)")
+        p.add_argument('--lon', type=float, help='longitude')
+        p.add_argument('--elevation', type=float, help='metres above sea level (with --lat/--lon)')
+
+    p = sub.add_parser('guidance', help='the next hours from the big weather models')
+    guidance_args(p)
+    p.add_argument('--hours', type=int, default=48, help='how far ahead (default: 48)')
+    p.add_argument('--every', type=int, default=3, help='print every Nth hour (default: 3)')
+    p.add_argument('--json', action='store_true', help='print every hour as JSON')
+    p.set_defaults(func=cmd_guidance)
+
+    p = sub.add_parser('guidance-check', help="score the models' past forecasts against the station")
+    guidance_args(p)
+    p.add_argument('--days', type=int, default=60, help='how many recent days to score (default: 60)')
+    p.add_argument('--lead', type=int, default=1, help='forecasts made this many days ahead, 1 to 7 (default: 1)')
+    p.set_defaults(func=cmd_guidance_check)
 
     args = parser.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
