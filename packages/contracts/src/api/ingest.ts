@@ -8,9 +8,19 @@ import { z } from 'zod';
 
 const Prob = z.number().min(0).max(1);
 
-/** `python -m wxml predict --json [--ask MODEL]` */
+/** What one weather model said about tonight and tomorrow (°C, mm). */
+export const ModelSaidSchema = z.object({
+  night_min: z.number().nullable().optional(),
+  day_max: z.number().nullable().optional(),
+  rain_24h: z.number().nullable().optional(),
+}).passthrough();
+
+/** `python -m wxml issue` (or `predict --json [--ask MODEL]`) */
 export const ForecastPayloadSchema = z.object({
   station: z.string().optional(),
+  timezone: z.string().optional(),
+  /** When it was issued (UTC), set by `issue`. */
+  issued_at: z.string().optional(),
   evening: z.object({
     date: z.string(),
     night_min: z.number(),
@@ -18,8 +28,16 @@ export const ForecastPayloadSchema = z.object({
     frost_chance: Prob,
     day_max: z.number().nullable().optional(),
     rain_next_24h_chance: Prob.nullable().optional(),
+    normal_low: z.number().nullable().optional(),
+    normal_high: z.number().nullable().optional(),
     analogs: z.array(z.object({ date: z.string(), night_min: z.number() }).passthrough()).optional(),
   }).passthrough(),
+  /** Which trained model made each number, e.g. "night_min+guidance". */
+  models: z.record(z.string()).optional(),
+  /** What each weather model said, keyed by model id (ecmwf_ifs025, met_eireann...). */
+  guidance: z.record(ModelSaidSchema).nullable().optional(),
+  /** The Ollama model that wrote `forecast`. */
+  narrator: z.string().nullable().optional(),
   latest_hour: z.object({
     time: z.string(),
     rain_next_6h_chance: Prob.optional(),
@@ -104,6 +122,7 @@ export const IngestOverviewResponseSchema = z.object({
 
 export type IngestKindValue = z.infer<typeof IngestKindSchema>;
 export type ForecastPayload = z.infer<typeof ForecastPayloadSchema>;
+export type ModelSaid = z.infer<typeof ModelSaidSchema>;
 export type ModelScoresPayload = z.infer<typeof ModelScoresPayloadSchema>;
 export type OutagesPayload = z.infer<typeof OutagesPayloadSchema>;
 export type HarvestPayload = z.infer<typeof HarvestPayloadSchema>;

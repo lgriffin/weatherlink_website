@@ -13,6 +13,8 @@ import {
   type AnnualStatsResponse,
   IngestOverviewResponseSchema,
   type IngestOverviewResponse,
+  ForecastResponseSchema,
+  type ForecastResponse,
   type IngestKindValue,
 } from '@weather/contracts';
 import { IS_STATIC, dataUrl, nearestSnapshotHours } from '../config/site';
@@ -126,6 +128,10 @@ export function fetchSnapshotInfo(): Promise<SnapshotInfo> {
   snapshotInfo ??= getJson('', 'meta.json').then((json) => json as SnapshotInfo);
   snapshotInfo.catch(() => { snapshotInfo = null; });
   return snapshotInfo;
+}
+
+export async function fetchForecast(): Promise<ForecastResponse> {
+  return ForecastResponseSchema.parse(await getJson('/api/v1/forecast', 'forecast.json'));
 }
 
 export async function fetchIngestOverview(): Promise<IngestOverviewResponse> {

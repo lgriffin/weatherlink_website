@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnnualRouteImport } from './routes/annual'
 import { Route as CompareRouteImport } from './routes/compare'
 import { Route as DownloadsRouteImport } from './routes/downloads'
+import { Route as ForecastRouteImport } from './routes/forecast'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as OutputsRouteImport } from './routes/outputs'
@@ -38,6 +39,11 @@ const CompareRoute = CompareRouteImport.update({
 const DownloadsRoute = DownloadsRouteImport.update({
   id: '/downloads',
   path: '/downloads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForecastRoute = ForecastRouteImport.update({
+  id: '/forecast',
+  path: '/forecast',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HistoryRoute = HistoryRouteImport.update({
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/annual': typeof AnnualRoute
   '/compare': typeof CompareRoute
   '/downloads': typeof DownloadsRoute
+  '/forecast': typeof ForecastRoute
   '/history': typeof HistoryRoute
   '/map': typeof MapRoute
   '/outputs': typeof OutputsRoute
@@ -88,6 +95,7 @@ export interface FileRoutesByTo {
   '/annual': typeof AnnualRoute
   '/compare': typeof CompareRoute
   '/downloads': typeof DownloadsRoute
+  '/forecast': typeof ForecastRoute
   '/history': typeof HistoryRoute
   '/map': typeof MapRoute
   '/outputs': typeof OutputsRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/annual': typeof AnnualRoute
   '/compare': typeof CompareRoute
   '/downloads': typeof DownloadsRoute
+  '/forecast': typeof ForecastRoute
   '/history': typeof HistoryRoute
   '/map': typeof MapRoute
   '/outputs': typeof OutputsRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/annual'
     | '/compare'
     | '/downloads'
+    | '/forecast'
     | '/history'
     | '/map'
     | '/outputs'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/annual'
     | '/compare'
     | '/downloads'
+    | '/forecast'
     | '/history'
     | '/map'
     | '/outputs'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/annual'
     | '/compare'
     | '/downloads'
+    | '/forecast'
     | '/history'
     | '/map'
     | '/outputs'
@@ -152,6 +164,7 @@ export interface RootRouteChildren {
   AnnualRoute: typeof AnnualRoute
   CompareRoute: typeof CompareRoute
   DownloadsRoute: typeof DownloadsRoute
+  ForecastRoute: typeof ForecastRoute
   HistoryRoute: typeof HistoryRoute
   MapRoute: typeof MapRoute
   OutputsRoute: typeof OutputsRoute
@@ -188,6 +201,13 @@ declare module '@tanstack/react-router' {
       path: '/downloads'
       fullPath: '/downloads'
       preLoaderRoute: typeof DownloadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forecast': {
+      id: '/forecast'
+      path: '/forecast'
+      fullPath: '/forecast'
+      preLoaderRoute: typeof ForecastRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/history': {
@@ -240,6 +260,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnnualRoute: AnnualRoute,
   CompareRoute: CompareRoute,
   DownloadsRoute: DownloadsRoute,
+  ForecastRoute: ForecastRoute,
   HistoryRoute: HistoryRoute,
   MapRoute: MapRoute,
   OutputsRoute: OutputsRoute,

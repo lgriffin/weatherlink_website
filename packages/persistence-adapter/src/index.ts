@@ -7,5 +7,6 @@ export { DrizzleDailySummaryRepository } from './repositories/daily-summary-repo
 export { DrizzleRecordRepository } from './repositories/record-repository.js';
 export { DrizzleArchiveRecordRepository } from './repositories/archive-record-repository.js';
 export { DrizzleIngestReportRepository } from './repositories/ingest-report-repository.js';
+export { IngestForecastRepository } from './repositories/ingest-forecast-repository.js';
 export { DrizzleTransactionManager } from './transaction-manager.js';
 export * as schema from './schema/index.js';

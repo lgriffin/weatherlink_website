@@ -21,6 +21,9 @@ function RootLayout() {
         <Link to="/" activeProps={{ 'data-status': 'active' } as Record<string, string>}>
           Now
         </Link>
+        <Link to="/forecast" activeProps={{ 'data-status': 'active' } as Record<string, string>}>
+          Forecast
+        </Link>
         <Link to="/map" activeProps={{ 'data-status': 'active' } as Record<string, string>}>
           Map
         </Link>

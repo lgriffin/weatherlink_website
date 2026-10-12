@@ -29,3 +29,4 @@ export { RecordIngestReport, INGEST_REPORTS_KEPT } from './use-cases/record-inge
 export { GetIngestOverview, type IngestOverview } from './use-cases/get-ingest-overview.js';
 export { ExportHistory, type ExportHistoryOptions, type ExportHistoryResult } from './use-cases/export-history.js';
 export { ImportHistory, type ImportHistoryResult } from './use-cases/import-history.js';
+export { GetForecast, FORECAST_STALE_AFTER_HOURS, type ForecastResult } from './use-cases/get-forecast.js';

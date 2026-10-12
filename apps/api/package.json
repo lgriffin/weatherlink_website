@@ -22,7 +22,8 @@
     "@weather/observability": "workspace:*",
     "@weather/weatherlink-adapter": "workspace:*",
     "@weather/persistence-adapter": "workspace:*",
-    "@weather/http-adapter": "workspace:*"
+    "@weather/http-adapter": "workspace:*",
+    "@weather/met-eireann-adapter": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
