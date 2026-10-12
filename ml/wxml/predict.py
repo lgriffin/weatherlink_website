@@ -11,7 +11,8 @@ from . import brief as br
 from .analogs import find_analogs
 from .data import load_hourly
 from .features import build_features, evening_table
-from .models import TASKS_BY_NAME, load_models, night_outlook
+from .forecasting.mos import evening_by_model, evening_features, hourly_features
+from .models import GUIDED, RAW_GUIDANCE, TASKS_BY_NAME, load_models, night_outlook
 
 
 def _one(booster, task_name: str, row: pd.Series) -> float:
@@ -20,8 +21,19 @@ def _one(booster, task_name: str, row: pd.Series) -> float:
     return float(booster.predict(x)[0])
 
 
+def _pick(boosters: dict, manifest: dict, name: str, row: pd.Series) -> str | None:
+    """The guided model when it earned its place and the row has guidance, else the station-only one."""
+    guided = name + GUIDED
+    key = RAW_GUIDANCE[name]
+    if guided in boosters and manifest[guided].get('use') and pd.notna(row.get(key, np.nan)):
+        return guided
+    return name if name in boosters else None
+
+
 def forecast(db_path: str | Path, models_dir: Path, station_id: str | None = None,
-             date: str | None = None) -> dict:
+             date: str | None = None, guidance: pd.DataFrame | None = None) -> dict:
+    """Tonight's numbers and brief. `guidance` (one source and lead time, covering
+    tonight and tomorrow) lets the guided models run where they beat the station-only ones."""
     station, hourly = load_hourly(db_path, station_id)
     features = build_features(hourly, station)
     evenings = evening_table(hourly, features, station)
@@ -35,26 +47,46 @@ def forecast(db_path: str | Path, models_dir: Path, station_id: str | None = Non
     if date not in evenings.index:
         raise LookupError(f'No 18:00 reading for {date}.')
     row = evenings.loc[date]
+    has_guidance = guidance is not None and not guidance.empty
+    if has_guidance:
+        row = pd.concat([row, evening_features(guidance, pd.Index([date]), station.timezone).iloc[0],
+                         hourly_features(guidance, pd.DatetimeIndex([row['issue_hour']])).iloc[0]])
 
-    night = _one(boosters['night_min'], 'night_min', row)
-    spread = night_outlook(np.array([night]), np.array(manifest['night_min']['residuals']))
+    used = {}
+
+    def run(name):
+        chosen = _pick(boosters, manifest, name, row)
+        if chosen is None:
+            return None
+        used[name] = chosen
+        return _one(boosters[chosen], chosen, row)
+
+    night = run('night_min')
+    spread = night_outlook(np.array([night]), np.array(manifest[used['night_min']]['residuals']))
     outlook = br.Outlook(
         night_min=night, p10=float(spread['p10'][0]), p90=float(spread['p90'][0]),
         frost_chance=float(spread['frost_chance'][0]),
-        day_max=_one(boosters['day_max'], 'day_max', row) if 'day_max' in boosters else None,
-        rain_24h=_one(boosters['rain_next_24h'], 'rain_next_24h', row) if 'rain_next_24h' in boosters else None,
-        rain_6h=_one(boosters['rain_next_6h'], 'rain_next_6h', row) if 'rain_next_6h' in boosters else None,
+        day_max=run('day_max'), rain_24h=run('rain_next_24h'), rain_6h=run('rain_next_6h'),
     )
     normal_low, normal_high = br.normals_for(evenings, date, int(row['doy']))
     analogs = find_analogs(evenings, date)
     text = br.build_brief(date, row, outlook, normal_low, normal_high, analogs)
 
     latest = features[~features['outage']].iloc[-1]
+    if has_guidance:
+        latest = pd.concat([latest, hourly_features(guidance, pd.DatetimeIndex([latest.name])).iloc[0]])
     now = {'time': latest['local'].isoformat()}
-    if 'rain_next_6h' in boosters:
-        now['rain_next_6h_chance'] = round(_one(boosters['rain_next_6h'], 'rain_next_6h', latest), 3)
-    if 'temp_next_24h' in boosters:
-        now['temp_in_24h'] = round(_one(boosters['temp_next_24h'], 'temp_next_24h', latest), 1)
+    for name, key, digits in (('rain_next_6h', 'rain_next_6h_chance', 3), ('temp_next_24h', 'temp_in_24h', 1)):
+        chosen = _pick(boosters, manifest, name, latest)
+        if chosen:
+            now[key] = round(_one(boosters[chosen], chosen, latest), digits)
+
+    models_said = None
+    if has_guidance:
+        per = evening_by_model(guidance, pd.Index([date]), station.timezone).set_index('model')
+        models_said = {m: {k: (None if pd.isna(v) else round(float(v), 1))
+                           for k, v in r[['night_min', 'day_max', 'rain_24h']].items()}
+                       for m, r in per.iterrows()}
 
     return {
         'station': station.name,
@@ -68,5 +100,7 @@ def forecast(db_path: str | Path, models_dir: Path, station_id: str | None = Non
             'analogs': [{'date': d, 'night_min': round(float(a['night_min']), 1)} for d, a in analogs.iterrows()],
         },
         'latest_hour': now,
+        'models': used,
+        'guidance': models_said,
         'brief': text,
     }

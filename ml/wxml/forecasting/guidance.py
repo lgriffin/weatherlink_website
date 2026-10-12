@@ -9,12 +9,14 @@ wind) and whether it beats persistence ("the same as this time yesterday").
 
 from __future__ import annotations
 
+from typing import Callable
+
 import numpy as np
 import pandas as pd
 
 from ..data import Station
 from .domain import Location
-from .ports import ForecastSource, ObservationStore
+from .ports import ForecastSource, GuidanceArchive, ObservationStore
 
 # Variables the station measures too, so they can be scored.
 SCORED = ['temp', 'dew', 'rh', 'pressure', 'wind', 'gust', 'rain', 'solar']
@@ -77,3 +79,37 @@ def check_guidance(store: ObservationStore, source: ForecastSource, models: list
     guidance = source.as_issued(location or location_of(station), models,
                                 f'{start:%Y-%m-%d}', f'{end:%Y-%m-%d}', lead_days)
     return station, score_guidance(hourly, guidance)
+
+
+# Open-Meteo keeps past runs from here for most models.
+GUIDANCE_FROM = '2024-01-01'
+
+
+def sync_guidance(source: ForecastSource, archive: GuidanceArchive, location: Location, models: list[str],
+                  lead_days: int = 1, first: str = GUIDANCE_FROM, today: pd.Timestamp | None = None,
+                  log: Callable[[str], None] = lambda _: None) -> list[str]:
+    """Fetch the as-issued guidance the archive is missing, a month at a time, up to yesterday (UTC).
+
+    A month is fetched again while it can still change (it was incomplete when
+    last fetched) or when it lacks a model now asked for. Returns the months fetched.
+    """
+    today = (today or pd.Timestamp.now(tz='UTC')).floor('D')
+    last_day = today - pd.Timedelta(days=1)
+    stored = archive.months(source.name, lead_days)
+    fetched = []
+    for month_start in pd.date_range(pd.Timestamp(first, tz='UTC').replace(day=1), last_day, freq='MS'):
+        month = f'{month_start:%Y-%m}'
+        info = stored.get(month)
+        if info and info['complete'] and set(models) <= info['models']:
+            continue
+        asked = sorted(set(models) | (info['models'] if info else set()))
+        month_end = month_start + pd.offsets.MonthEnd(0)
+        end = min(month_end, last_day)
+        start = max(month_start, pd.Timestamp(first, tz='UTC'))
+        frame = source.as_issued(location, asked, f'{start:%Y-%m-%d}', f'{end:%Y-%m-%d}', lead_days)
+        # Settled once the whole month is in the past by more than the lead time.
+        complete = today > month_end + pd.Timedelta(days=lead_days + 1)
+        archive.save_month(source.name, lead_days, month, frame, asked, complete)
+        log(f'{month}: {len(frame):,} hours of guidance from {frame["model"].nunique()} models')
+        fetched.append(month)
+    return fetched

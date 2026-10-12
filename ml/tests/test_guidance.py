@@ -102,6 +102,15 @@ def test_latest_keeps_only_the_hours_asked_for():
     assert (frame['lead_days'] == 0).all()
 
 
+def test_latest_can_include_the_past_hours():
+    now = pd.Timestamp.now(tz='UTC').floor('h')
+    times = pd.date_range(now - pd.Timedelta(hours=30), periods=60, freq='h')
+    fetch = Recorder(body(times, ['m'], suffix=False))
+    frame = OpenMeteoForecastSource(fetch).latest(HERE, ['m'], hours=12, past_hours=24)
+    assert query(fetch.urls[0])['past_days'] == '1'
+    assert frame['hour'].min() == now - pd.Timedelta(hours=24)
+
+
 def test_errors_are_reported():
     with pytest.raises(RuntimeError, match='bad model'):
         OpenMeteoForecastSource(Recorder({'error': True, 'reason': 'bad model'})).latest(HERE, ['x'])

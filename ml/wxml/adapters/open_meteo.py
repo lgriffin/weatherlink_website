@@ -78,13 +78,17 @@ class OpenMeteoForecastSource:
         self._forecast_url = forecast_url
         self._previous_runs_url = previous_runs_url
 
-    def latest(self, location: Location, models: list[str], hours: int = 72) -> pd.DataFrame:
+    def latest(self, location: Location, models: list[str], hours: int = 72,
+               past_hours: int = 0) -> pd.DataFrame:
         days = max(1, min(16, math.ceil(hours / 24) + 1))
-        url = self._url(self._forecast_url, location, models, list(VARIABLES.values()),
-                        {'forecast_days': days})
+        extra = {'forecast_days': days}
+        if past_hours > 0:
+            extra['past_days'] = min(92, math.ceil(past_hours / 24))
+        url = self._url(self._forecast_url, location, models, list(VARIABLES.values()), extra)
         frame = self._parse(self._fetch(url), models, lead_days=0)
-        start = pd.Timestamp.now(tz='UTC').floor('h')
-        keep = (frame['hour'] >= start) & (frame['hour'] < start + pd.Timedelta(hours=hours))
+        now = pd.Timestamp.now(tz='UTC').floor('h')
+        start = now - pd.Timedelta(hours=max(0, past_hours))
+        keep = (frame['hour'] >= start) & (frame['hour'] < now + pd.Timedelta(hours=hours))
         return frame.loc[keep].reset_index(drop=True)
 
     def as_issued(self, location: Location, models: list[str], start: str, end: str,

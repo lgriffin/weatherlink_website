@@ -7,6 +7,8 @@
   modelfile    write an Ollama Modelfile for your fine-tuned adapter
   guidance     what the big weather models say for the station (Open-Meteo)
   guidance-check  how well each of those models has done at the station
+  guidance-sync   save their past forecasts, as issued, for training (MOS)
+  scores       the last training run's scores as a Markdown table
 """
 
 from __future__ import annotations
@@ -33,7 +35,7 @@ def default_db() -> Path:
     return path if path.is_absolute() else (REPO_DIR / path).resolve()
 
 
-def load_tables(args):
+def load_tables(args, with_guidance: bool = False):
     from .data import load_hourly
     from .features import build_features, evening_table, hourly_targets
     print(f'Reading {args.db} (read-only)...', file=sys.stderr)
@@ -46,7 +48,27 @@ def load_tables(args):
     outage_hours = int(hourly['outage'].sum())
     print(f'{station.name}: {hourly.index.min():%Y-%m-%d} to {hourly.index.max():%Y-%m-%d}, '
           f'{len(hourly):,} hours ({outage_hours:,} without data), {len(evenings):,} evenings', file=sys.stderr)
+    if with_guidance:
+        evenings, rows = _join_guidance(args, station, evenings, rows)
     return station, hourly, evenings, rows
+
+
+def _archived_guidance(args):
+    from .adapters.guidance_files import GuidanceFiles
+    from .adapters.open_meteo import OpenMeteoForecastSource
+    return GuidanceFiles(args.guidance_dir).load(OpenMeteoForecastSource.name, 1)
+
+
+def _join_guidance(args, station, evenings, rows):
+    from .forecasting.mos import add_guidance
+    guidance = _archived_guidance(args)
+    if guidance.empty:
+        print(f'No saved guidance in {args.guidance_dir}; training on the station alone. '
+              'Run `guidance-sync` first to add it.', file=sys.stderr)
+        return evenings, rows
+    print(f"Guidance: {guidance['model'].nunique()} models, {guidance['hour'].min():%Y-%m-%d} to "
+          f"{guidance['hour'].max():%Y-%m-%d} (as issued a day ahead)", file=sys.stderr)
+    return add_guidance(evenings, rows, guidance, station.timezone)
 
 
 def cmd_export(args):
@@ -62,14 +84,30 @@ def cmd_export(args):
 
 def cmd_train(args):
     from .models import train_all
-    _, _, evenings, rows = load_tables(args)
+    _, _, evenings, rows = load_tables(args, with_guidance=not args.no_guidance)
     train_all({'evening': evenings, 'hourly': rows}, args.out, test_from=args.test_from)
     print(f'Models in {args.out / "models"}, scores in {args.out / "metrics.json"}')
 
 
+def predict_guidance(args):
+    """Guidance for the forecast: the latest runs for today, the saved as-issued runs for a past date."""
+    if args.guidance == 'none':
+        return None
+    try:
+        if args.guidance == 'archive' or args.date:
+            frame = _archived_guidance(args)
+        else:
+            from .adapters.open_meteo import DEFAULT_MODELS, OpenMeteoForecastSource
+            frame = OpenMeteoForecastSource().latest(_location(args), DEFAULT_MODELS, hours=48, past_hours=24)
+    except (RuntimeError, LookupError, OSError) as err:
+        print(f'No guidance ({err}); using the station-only models.', file=sys.stderr)
+        return None
+    return frame if not frame.empty else None
+
+
 def cmd_predict(args):
     from .predict import forecast
-    result = forecast(args.db, args.out / 'models', args.station, args.date)
+    result = forecast(args.db, args.out / 'models', args.station, args.date, guidance=predict_guidance(args))
     if args.ask:
         from .adapters.ollama_narrator import OllamaNarrator
         result['forecast'] = OllamaNarrator(args.ask).write(result['brief'])
@@ -148,6 +186,24 @@ def cmd_guidance_check(args):
     print(f'Saved {path}. Weather data by Open-Meteo.com (CC BY 4.0)')
 
 
+def cmd_guidance_sync(args):
+    from .adapters.guidance_files import GuidanceFiles
+    from .adapters.open_meteo import OpenMeteoForecastSource
+    from .forecasting.guidance import sync_guidance
+    fetched = sync_guidance(OpenMeteoForecastSource(), GuidanceFiles(args.guidance_dir), _location(args),
+                            args.models, lead_days=args.lead, first=args.since,
+                            log=lambda line: print(line, file=sys.stderr))
+    print(f'Fetched {len(fetched)} month(s) into {args.guidance_dir}. Weather data by Open-Meteo.com (CC BY 4.0)')
+
+
+def cmd_scores(args):
+    from .report import markdown
+    path = args.out / 'metrics.json'
+    if not path.exists():
+        raise SystemExit(f'No {path}; run `train` first.')
+    print(markdown(json.loads(path.read_text())), end='')
+
+
 def _local(ref: str | None) -> str | None:
     """Local paths become absolute, since Ollama reads them relative to the Modelfile."""
     if ref and Path(ref).exists():
@@ -171,6 +227,7 @@ def main(argv=None):
     parser.add_argument('--db', type=Path, default=default_db(), help='SQLite database (default: DATABASE_PATH)')
     parser.add_argument('--out', type=Path, default=ML_DIR / 'out', help='output folder (default: ml/out)')
     parser.add_argument('--station', help='station id (default: the active station)')
+    parser.add_argument('--guidance-dir', type=Path, help='saved as-issued guidance (default: <out>/guidance)')
     sub = parser.add_subparsers(dest='command', required=True)
 
     p = sub.add_parser('export', help='write hourly.csv and evenings.csv')
@@ -178,12 +235,18 @@ def main(argv=None):
 
     p = sub.add_parser('train', help='train and score the models')
     p.add_argument('--test-from', help='first date of the held-out test period (default: last 12 months)')
+    p.add_argument('--no-guidance', action='store_true', help='train on the station alone, even with saved guidance')
     p.set_defaults(func=cmd_train)
 
     p = sub.add_parser('predict', help="tonight's numbers and brief")
     p.add_argument('--date', help='evening to forecast from (default: the latest)')
     p.add_argument('--ask', metavar='MODEL', help='also ask this Ollama model for the written forecast')
     p.add_argument('--json', action='store_true', help='print everything as JSON')
+    p.add_argument('--guidance', choices=['live', 'archive', 'none'], default='live',
+                   help='weather-model guidance: the latest runs (default), the saved ones, or none')
+    p.add_argument('--lat', type=float, help=argparse.SUPPRESS)
+    p.add_argument('--lon', type=float, help=argparse.SUPPRESS)
+    p.add_argument('--elevation', type=float, help=argparse.SUPPRESS)
     p.set_defaults(func=cmd_predict)
 
     p = sub.add_parser('llm-dataset', help='build train.jsonl / valid.jsonl for fine-tuning')
@@ -218,8 +281,19 @@ def main(argv=None):
     p.add_argument('--lead', type=int, default=1, help='forecasts made this many days ahead, 1 to 7 (default: 1)')
     p.set_defaults(func=cmd_guidance_check)
 
+    from .forecasting.guidance import GUIDANCE_FROM
+    p = sub.add_parser('guidance-sync', help="save the models' past forecasts, as issued, for training")
+    guidance_args(p)
+    p.add_argument('--lead', type=int, default=1, help='forecasts made this many days ahead, 1 to 7 (default: 1)')
+    p.add_argument('--since', default=GUIDANCE_FROM, help=f'first date to fetch (default: {GUIDANCE_FROM})')
+    p.set_defaults(func=cmd_guidance_sync)
+
+    p = sub.add_parser('scores', help="the last training run's scores as a Markdown table")
+    p.set_defaults(func=cmd_scores)
+
     args = parser.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
+    args.guidance_dir = args.guidance_dir or args.out / 'guidance'
     args.func(args)
 
 
