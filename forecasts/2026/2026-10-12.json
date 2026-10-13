@@ -67,5 +67,13 @@
   }
  },
  "brief": "Issued 2026-10-12 18:00.\nNow: 15.2C, dew point 14.8C, humidity 97%, wind 1.8 m/s E, gusts to 7 m/s in the last 6h, pressure 1006.4 hPa (-0.2 in 3h), rain last 24h 7.0 mm.\nModel: overnight low 11.4C (likely range 10.3C to 12.6C); frost chance 0%; rain in next 6h 77%; rain by 18:00 tomorrow 100%; tomorrow's high 16.5C.\nNormal for date: low 9.3C, high 14.9C.\nLast night's low: 13.9C.\nSimilar past evenings: 2023-10-06 (low 14.2C), 2023-10-10 (low 14.3C, next 24h rain 36.8 mm), 2025-11-03 (low 12.9C, next 24h rain 14.6 mm), 2025-09-18 (low 13.8C, next 24h rain 14.2 mm), 2026-10-02 (low 6.4C, next 24h rain 1.8 mm).",
- "issued_at": "2026-10-12T18:00:09Z"
+ "issued_at": "2026-10-12T18:00:09Z",
+ "verification": {
+  "night_min": 10.8,
+  "day_max": 16.7,
+  "rain_24h_mm": 3.8,
+  "frost": false,
+  "wet": true,
+  "verified_at": "2026-10-13T21:21:21Z"
+ }
 }

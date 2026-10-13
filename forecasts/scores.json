@@ -1,3 +1,32 @@
 {
- "evenings": 0
+ "evenings": 1,
+ "from": "2026-10-12",
+ "to": "2026-10-12",
+ "night_min_mae": 0.6,
+ "day_max_mae": 0.2,
+ "frost_brier": 0.0,
+ "rain_24h_brier": 0.0,
+ "frost_nights": 0,
+ "weather_models": {
+  "ecmwf_ifs025": {
+   "night_min_mae": 1.2,
+   "day_max_mae": 3.2,
+   "evenings": 1
+  },
+  "icon_seamless": {
+   "night_min_mae": 0.9,
+   "day_max_mae": 3.5,
+   "evenings": 1
+  },
+  "knmi_harmonie_arome_europe": {
+   "night_min_mae": 2.5,
+   "day_max_mae": 3.5,
+   "evenings": 1
+  },
+  "ukmo_seamless": {
+   "night_min_mae": 1.5,
+   "day_max_mae": 3.2,
+   "evenings": 1
+  }
+ }
 }

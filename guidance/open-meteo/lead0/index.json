@@ -1,0 +1,11 @@
+{
+ "2026-10": {
+  "models": [
+   "ecmwf_ifs025",
+   "icon_seamless",
+   "knmi_harmonie_arome_europe",
+   "ukmo_seamless"
+  ],
+  "complete": false
+ }
+}
