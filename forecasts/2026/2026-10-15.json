@@ -75,5 +75,13 @@
   }
  },
  "brief": "Issued 2026-10-15 18:00.\nNow: 11.2C, dew point 9.3C, humidity 88%, wind 0.7 m/s W, gusts to 4 m/s in the last 6h, pressure 1016.7 hPa (+0.6 in 3h), rain last 24h 3.6 mm.\nModel (corrected for here): overnight low 6.4C (likely range 5.2C to 7.5C); frost chance 0%; rain in next 6h 5%; rain by 18:00 tomorrow 8%; tomorrow's high 13.8C.\nWeather models, tonight's low: ECMWF 4.4C, ICON 5.5C, Harmonie 1.9C, Met Office 3.6C (they disagree by 3.6C).\nWeather models, tomorrow's high: ECMWF 10.4C, ICON 9.8C, Harmonie 10.6C, Met Office 10.1C.\nWeather models, rain by 18:00 tomorrow: wet in 0 of 4.\nNormal for date: low 9.1C, high 14.6C.\nLast night's low: 13.1C.\nSimilar past evenings: 2025-10-05 (low 10.3C, next 24h rain 0.0 mm), 2023-10-07 (low 12.1C, next 24h rain 0.2 mm), 2025-10-06 (low 11.7C, next 24h rain 0.4 mm), 2026-10-01 (low 11.2C, next 24h rain 11.6 mm), 2025-10-16 (low 9.2C, next 24h rain 0.0 mm).",
- "issued_at": "2026-10-15T18:21:09Z"
+ "issued_at": "2026-10-15T18:21:09Z",
+ "verification": {
+  "night_min": 5.1,
+  "day_max": 13.4,
+  "rain_24h_mm": 0.0,
+  "frost": false,
+  "wet": false,
+  "verified_at": "2026-10-16T17:28:16Z"
+ }
 }
