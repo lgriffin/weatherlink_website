@@ -1,0 +1,58 @@
+{
+ "station": "Graigue",
+ "timezone": "Europe/Dublin",
+ "evening": {
+  "date": "2026-10-19",
+  "night_min": 7.9,
+  "night_min_range": [
+   5.5,
+   9.9
+  ],
+  "frost_chance": 0.0,
+  "day_max": 12.3,
+  "rain_next_24h_chance": 0.877,
+  "normal_low": 8.7,
+  "normal_high": 14.0,
+  "analogs": [
+   {
+    "date": "2023-10-16",
+    "night_min": 8.1,
+    "rain_24h_next": 5.2
+   },
+   {
+    "date": "2023-10-17",
+    "night_min": 9.4,
+    "rain_24h_next": 57.0
+   },
+   {
+    "date": "2023-10-02",
+    "night_min": 8.9,
+    "rain_24h_next": 0.2
+   },
+   {
+    "date": "2025-10-15",
+    "night_min": 9.8,
+    "rain_24h_next": 0.0
+   },
+   {
+    "date": "2025-10-27",
+    "night_min": 8.9,
+    "rain_24h_next": 0.4
+   }
+  ]
+ },
+ "latest_hour": {
+  "time": "2026-10-19T21:00:00+01:00",
+  "rain_next_6h_chance": 0.792,
+  "temp_in_24h": 9.6
+ },
+ "models": {
+  "night_min": "night_min",
+  "day_max": "day_max",
+  "rain_next_24h": "rain_next_24h",
+  "rain_next_6h": "rain_next_6h"
+ },
+ "guidance": null,
+ "brief": "Issued 2026-10-19 18:00.\nNow: 9.3C, dew point 8.1C, humidity 93%, wind 0.4 m/s E, gusts to 5 m/s in the last 6h, pressure 1019.5 hPa (-1.9 in 3h), rain last 24h 6.0 mm.\nModel: overnight low 7.9C (likely range 5.5C to 9.9C); frost chance 0%; rain in next 6h 91%; rain by 18:00 tomorrow 88%; tomorrow's high 12.3C.\nNormal for date: low 8.7C, high 14.0C.\nLast night's low: 4.6C.\nSimilar past evenings: 2023-10-16 (low 8.1C, next 24h rain 5.2 mm), 2023-10-17 (low 9.4C, next 24h rain 57.0 mm), 2023-10-02 (low 8.9C, next 24h rain 0.2 mm), 2025-10-15 (low 9.8C, next 24h rain 0.0 mm), 2025-10-27 (low 8.9C, next 24h rain 0.4 mm).",
+ "issued_at": "2026-10-19T20:39:38Z"
+}
