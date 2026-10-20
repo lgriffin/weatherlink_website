@@ -1,11 +1,11 @@
 {
- "evenings": 7,
+ "evenings": 8,
  "from": "2026-10-12",
- "to": "2026-10-18",
- "night_min_mae": 0.63,
- "day_max_mae": 0.9,
+ "to": "2026-10-19",
+ "night_min_mae": 0.56,
+ "day_max_mae": 1.09,
  "frost_brier": 0.0,
- "rain_24h_brier": 0.04,
+ "rain_24h_brier": 0.037,
  "frost_nights": 0,
  "weather_models": {
   "ecmwf_ifs025": {
