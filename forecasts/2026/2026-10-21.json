@@ -1,0 +1,79 @@
+{
+ "station": "Graigue",
+ "timezone": "Europe/Dublin",
+ "evening": {
+  "date": "2026-10-21",
+  "night_min": 5.4,
+  "night_min_range": [
+   4.3,
+   6.6
+  ],
+  "frost_chance": 0.0,
+  "day_max": 12.6,
+  "rain_next_24h_chance": 0.994,
+  "normal_low": 8.4,
+  "normal_high": 13.7,
+  "analogs": [
+   {
+    "date": "2023-10-24",
+    "night_min": 5.9,
+    "rain_24h_next": 0.2
+   },
+   {
+    "date": "2025-10-28",
+    "night_min": 4.2,
+    "rain_24h_next": 0.2
+   },
+   {
+    "date": "2025-11-01",
+    "night_min": 3.4,
+    "rain_24h_next": 0.8
+   },
+   {
+    "date": "2023-10-22",
+    "night_min": 10.3,
+    "rain_24h_next": 44.8
+   },
+   {
+    "date": "2026-10-15",
+    "night_min": 5.1,
+    "rain_24h_next": 0.0
+   }
+  ]
+ },
+ "latest_hour": {
+  "time": "2026-10-21T20:00:00+01:00",
+  "rain_next_6h_chance": 0.436,
+  "temp_in_24h": 10.5
+ },
+ "models": {
+  "night_min": "night_min+guidance",
+  "day_max": "day_max+guidance",
+  "rain_next_24h": "rain_next_24h+guidance",
+  "rain_next_6h": "rain_next_6h+guidance"
+ },
+ "guidance": {
+  "ecmwf_ifs025": {
+   "night_min": 2.3,
+   "day_max": 9.7,
+   "rain_24h": 0.9
+  },
+  "icon_seamless": {
+   "night_min": 2.4,
+   "day_max": 9.6,
+   "rain_24h": 5.6
+  },
+  "knmi_harmonie_arome_europe": {
+   "night_min": 2.6,
+   "day_max": 9.9,
+   "rain_24h": 1.0
+  },
+  "ukmo_seamless": {
+   "night_min": 3.8,
+   "day_max": 10.1,
+   "rain_24h": 2.3
+  }
+ },
+ "brief": "Issued 2026-10-21 18:00.\nNow: 10.5C, dew point 6.9C, humidity 79%, wind 0.1 m/s SE, gusts to 11 m/s in the last 6h, pressure 1005.5 hPa (-0.1 in 3h), rain last 24h 5.6 mm.\nModel (corrected for here): overnight low 5.4C (likely range 4.3C to 6.6C); frost chance 0%; rain in next 6h 75%; rain by 18:00 tomorrow 99%; tomorrow's high 12.6C.\nWeather models, tonight's low: ECMWF 2.3C, ICON 2.4C, Harmonie 2.6C, Met Office 3.8C.\nWeather models, tomorrow's high: ECMWF 9.7C, ICON 9.6C, Harmonie 9.9C, Met Office 10.1C.\nWeather models, rain by 18:00 tomorrow: wet in 4 of 4 (up to 5.6 mm).\nNormal for date: low 8.4C, high 13.7C.\nLast night's low: 7.3C.\nSimilar past evenings: 2023-10-24 (low 5.9C, next 24h rain 0.2 mm), 2025-10-28 (low 4.2C, next 24h rain 0.2 mm), 2025-11-01 (low 3.4C, next 24h rain 0.8 mm), 2023-10-22 (low 10.3C, next 24h rain 44.8 mm), 2026-10-15 (low 5.1C, next 24h rain 0.0 mm).",
+ "issued_at": "2026-10-21T19:26:10Z"
+}
