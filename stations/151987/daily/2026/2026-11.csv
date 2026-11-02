@@ -1,0 +1,16 @@
+date,measurement,unit,min,max,avg,count
+2026-11-01,humidity.outdoor,percent,79.8,96.3,90.78,283
+2026-11-01,pressure.absolute,hPa,1018.863,1024.112,1021.66,288
+2026-11-01,pressure.seaLevel,hPa,1033.391,1038.707,1036.23,288
+2026-11-01,rain.daily,mm,,0,,288
+2026-11-01,rain.rate,mm/h,0,0,0,282
+2026-11-01,temperature.dewPoint,celsius,4.722,11.278,7.7,283
+2026-11-01,temperature.heatIndex,celsius,5.944,12.222,9.26,281
+2026-11-01,temperature.outdoor,celsius,5.944,12.111,9.14,283
+2026-11-01,temperature.thwIndex,celsius,4.333,12.111,8.34,281
+2026-11-01,temperature.wetBulb,celsius,5.333,11.5,8.34,283
+2026-11-01,temperature.windChill,celsius,4.333,12.111,8.25,281
+2026-11-01,wind.direction,degrees,259,310,285.29,282
+2026-11-01,wind.gust,m/s,0.894,8.941,4.37,282
+2026-11-01,wind.run,km,,177.93,,282
+2026-11-01,wind.speed,m/s,0.165,4.944,2.1,282
