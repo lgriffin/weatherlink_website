@@ -290,7 +290,7 @@
    "knmi_harmonie_arome_europe",
    "ukmo_seamless"
   ],
-  "complete": false
+  "complete": true
  },
  "2026-11": {
   "models": [
