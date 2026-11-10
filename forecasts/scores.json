@@ -1,32 +1,32 @@
 {
- "evenings": 24,
+ "evenings": 25,
  "from": "2026-10-12",
- "to": "2026-11-07",
- "night_min_mae": 0.53,
- "day_max_mae": 0.89,
+ "to": "2026-11-08",
+ "night_min_mae": 0.51,
+ "day_max_mae": 0.88,
  "frost_brier": 0.0,
- "rain_24h_brier": 0.064,
+ "rain_24h_brier": 0.075,
  "frost_nights": 0,
  "weather_models": {
   "ecmwf_ifs025": {
-   "night_min_mae": 2.42,
-   "day_max_mae": 2.54,
-   "evenings": 23
+   "night_min_mae": 2.45,
+   "day_max_mae": 2.59,
+   "evenings": 24
   },
   "icon_seamless": {
-   "night_min_mae": 2.03,
-   "day_max_mae": 2.4,
-   "evenings": 23
+   "night_min_mae": 2.02,
+   "day_max_mae": 2.43,
+   "evenings": 24
   },
   "knmi_harmonie_arome_europe": {
-   "night_min_mae": 3.18,
-   "day_max_mae": 2.5,
-   "evenings": 23
+   "night_min_mae": 3.19,
+   "day_max_mae": 2.52,
+   "evenings": 24
   },
   "ukmo_seamless": {
-   "night_min_mae": 1.83,
-   "day_max_mae": 2.32,
-   "evenings": 23
+   "night_min_mae": 1.82,
+   "day_max_mae": 2.33,
+   "evenings": 24
   }
  }
 }
