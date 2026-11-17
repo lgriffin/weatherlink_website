@@ -12742,5 +12742,37 @@
   "endTimestamp": "2026-11-15T21:41:06.000Z",
   "syncedAt": "2026-11-15T21:41:09.000Z",
   "observationCount": 100
+ },
+ {
+  "stationId": "151987",
+  "sensorId": "803862",
+  "startTimestamp": "2026-11-15T17:34:00.000Z",
+  "endTimestamp": "2026-11-16T01:53:20.000Z",
+  "syncedAt": "2026-11-16T01:53:20.000Z",
+  "observationCount": 200
+ },
+ {
+  "stationId": "151987",
+  "sensorId": "803862",
+  "startTimestamp": "2026-11-15T17:34:00.000Z",
+  "endTimestamp": "2026-11-16T09:28:26.000Z",
+  "syncedAt": "2026-11-16T09:28:27.000Z",
+  "observationCount": 382
+ },
+ {
+  "stationId": "151987",
+  "sensorId": "803862",
+  "startTimestamp": "2026-11-15T17:34:00.000Z",
+  "endTimestamp": "2026-11-16T17:34:00.000Z",
+  "syncedAt": "2026-11-16T20:19:58.000Z",
+  "observationCount": 576
+ },
+ {
+  "stationId": "151987",
+  "sensorId": "803862",
+  "startTimestamp": "2026-11-16T17:34:00.000Z",
+  "endTimestamp": "2026-11-16T20:19:57.000Z",
+  "syncedAt": "2026-11-16T20:20:01.000Z",
+  "observationCount": 66
  }
 ]
