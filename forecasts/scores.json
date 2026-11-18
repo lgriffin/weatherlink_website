@@ -1,11 +1,11 @@
 {
- "evenings": 32,
+ "evenings": 33,
  "from": "2026-10-12",
- "to": "2026-11-16",
- "night_min_mae": 0.51,
- "day_max_mae": 0.86,
- "frost_brier": 0.016,
- "rain_24h_brier": 0.059,
+ "to": "2026-11-17",
+ "night_min_mae": 0.52,
+ "day_max_mae": 0.9,
+ "frost_brier": 0.015,
+ "rain_24h_brier": 0.058,
  "frost_nights": 1,
  "weather_models": {
   "ecmwf_ifs025": {
@@ -24,8 +24,8 @@
    "evenings": 31
   },
   "met_eireann": {
-   "day_max_mae": 1.02,
-   "evenings": 4
+   "day_max_mae": 1.46,
+   "evenings": 5
   },
   "ukmo_seamless": {
    "night_min_mae": 1.77,
