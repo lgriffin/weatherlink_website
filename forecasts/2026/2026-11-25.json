@@ -1,0 +1,84 @@
+{
+ "station": "Graigue",
+ "timezone": "Europe/Dublin",
+ "evening": {
+  "date": "2026-11-25",
+  "night_min": 3.5,
+  "night_min_range": [
+   2.3,
+   4.6
+  ],
+  "frost_chance": 0.001,
+  "day_max": 9.7,
+  "rain_next_24h_chance": 0.991,
+  "normal_low": 5.1,
+  "normal_high": 10.2,
+  "analogs": [
+   {
+    "date": "2025-12-12",
+    "night_min": 3.1,
+    "rain_24h_next": 0.8
+   },
+   {
+    "date": "2025-12-10",
+    "night_min": 9.3,
+    "rain_24h_next": 4.8
+   },
+   {
+    "date": "2026-11-20",
+    "night_min": 4.2,
+    "rain_24h_next": 0.2
+   },
+   {
+    "date": "2023-11-16",
+    "night_min": 4.8,
+    "rain_24h_next": 5.6
+   },
+   {
+    "date": "2023-12-05",
+    "night_min": 1.1,
+    "rain_24h_next": 13.0
+   }
+  ]
+ },
+ "latest_hour": {
+  "time": "2026-11-25T22:00:00+00:00",
+  "rain_next_6h_chance": 0.055,
+  "temp_in_24h": 10.6
+ },
+ "models": {
+  "night_min": "night_min+guidance",
+  "day_max": "day_max+guidance",
+  "rain_next_24h": "rain_next_24h+guidance",
+  "rain_next_6h": "rain_next_6h+guidance"
+ },
+ "guidance": {
+  "ecmwf_ifs025": {
+   "night_min": 1.4,
+   "day_max": 7.2,
+   "rain_24h": 5.7
+  },
+  "icon_seamless": {
+   "night_min": 1.6,
+   "day_max": 7.8,
+   "rain_24h": 6.3
+  },
+  "knmi_harmonie_arome_europe": {
+   "night_min": -2.1,
+   "day_max": 7.5,
+   "rain_24h": 6.8
+  },
+  "ukmo_seamless": {
+   "night_min": 2.4,
+   "day_max": 7.7,
+   "rain_24h": 6.5
+  },
+  "met_eireann": {
+   "night_min": null,
+   "day_max": 9.3,
+   "rain_24h": null
+  }
+ },
+ "brief": "Issued 2026-11-25 18:00.\nNow: 6.3C, dew point 5.6C, humidity 95%, wind 1.0 m/s W, gusts to 4 m/s in the last 6h, pressure 1016.2 hPa (+1.4 in 3h), rain last 24h 0.0 mm.\nModel (corrected for here): overnight low 3.5C (likely range 2.3C to 4.6C); frost chance 0%; rain in next 6h 3%; rain by 18:00 tomorrow 99%; tomorrow's high 9.7C.\nWeather models, tonight's low: ECMWF 1.4C, ICON 1.6C, Harmonie -2.1C, Met Office 2.4C (they disagree by 4.5C).\nWeather models, tomorrow's high: ECMWF 7.2C, ICON 7.8C, Harmonie 7.5C, Met Office 7.7C, Met Éireann 9.3C (they disagree by 2.1C).\nWeather models, rain by 18:00 tomorrow: wet in 4 of 4 (up to 6.8 mm).\nNormal for date: low 5.1C, high 10.2C.\nLast night's low: 5.8C.\nSimilar past evenings: 2025-12-12 (low 3.1C, next 24h rain 0.8 mm), 2025-12-10 (low 9.3C, next 24h rain 4.8 mm), 2026-11-20 (low 4.2C, next 24h rain 0.2 mm), 2023-11-16 (low 4.8C, next 24h rain 5.6 mm), 2023-12-05 (low 1.1C, next 24h rain 13.0 mm).",
+ "issued_at": "2026-11-25T22:33:57Z"
+}
