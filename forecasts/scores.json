@@ -1,37 +1,37 @@
 {
- "evenings": 40,
+ "evenings": 41,
  "from": "2026-10-12",
- "to": "2026-11-25",
- "night_min_mae": 0.63,
- "day_max_mae": 0.89,
- "frost_brier": 0.013,
- "rain_24h_brier": 0.051,
+ "to": "2026-11-26",
+ "night_min_mae": 0.64,
+ "day_max_mae": 0.96,
+ "frost_brier": 0.012,
+ "rain_24h_brier": 0.05,
  "frost_nights": 1,
  "weather_models": {
   "ecmwf_ifs025": {
    "night_min_mae": 2.32,
-   "day_max_mae": 2.81,
-   "evenings": 38
+   "day_max_mae": 2.93,
+   "evenings": 39
   },
   "icon_seamless": {
-   "night_min_mae": 1.91,
-   "day_max_mae": 2.59,
-   "evenings": 38
+   "night_min_mae": 1.89,
+   "day_max_mae": 2.71,
+   "evenings": 39
   },
   "knmi_harmonie_arome_europe": {
    "night_min_mae": 3.09,
-   "day_max_mae": 2.67,
-   "evenings": 38
+   "day_max_mae": 2.76,
+   "evenings": 39
   },
   "met_eireann": {
    "night_min_mae": 2.1,
-   "day_max_mae": 1.2,
-   "evenings": 12
+   "day_max_mae": 1.48,
+   "evenings": 13
   },
   "ukmo_seamless": {
-   "night_min_mae": 1.86,
-   "day_max_mae": 2.56,
-   "evenings": 38
+   "night_min_mae": 1.87,
+   "day_max_mae": 2.68,
+   "evenings": 39
   }
  }
 }
